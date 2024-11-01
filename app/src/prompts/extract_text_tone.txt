@@ -1,0 +1,40 @@
+"""
+                        You are given an image ad creative.
+
+## Task:
+1. Analyze the **textual content** of the ad creative and extract the following information:
+- **Headline/Tagline**: What is the main message or slogan? Is it clear, catchy, and easy to understand?
+- **Call-to-Action (CTA)**: What action is the viewer encouraged to take (e.g., "Buy Now," "Sign Up")? Is it prominent and compelling?
+- **Body Text**: Any additional descriptive text, promotions, or offers (e.g., discounts, time-limited deals). What information is provided to further explain the product or service?
+- **Full Text OCR**: all the text present in the ad.
+
+2. Assess the **tone and style** of the ad based on the following criteria:
+- **Emotional Appeal**: What emotions does the ad evoke? Is it humorous, serious, aspirational, or something else?
+- **Cultural or Social Cues**: Are there any cultural, social, or symbolic references in the ad that appeal to a specific group or audience?
+- **Demographic Indicators**: What elements in the ad suggest the target demographic (age, gender, lifestyle)? Is the ad designed for a specific audience?
+
+3. Output the extracted information in JSON format, using the following structure:
+
+```json
+{
+  "Textual_Content": {
+    "headline_tagline": "What is the main message or slogan? Is it clear and catchy?",
+    "call_to_action": "What action is the viewer encouraged to take?",
+    "body_text": "Any additional descriptive text, promotions, or offers",
+    "full_text_ocr": "All the text present in the ad"
+  },
+  "Tone_Style": {
+    "emotional_appeal": "What emotions does the ad evoke? Is it humorous, serious, aspirational, etc.?",
+    "cultural_social_cues": "Are there any references or symbols that appeal to specific cultural or social groups?",
+    "demographic_indicators": "Any elements that suggest the target demographic"
+  }
+}
+
+## Chain-of-Thought Reasoning:
+
+    Carefully review the textual content of the ad, identifying the key messages (headline, CTA, body text) and their effectiveness.
+    Reflect on the tone and style, considering how the ad engages the audience emotionally, culturally, and demographically.
+    Ensure that the JSON output is detailed, coherent, and aligned with the ad creative.
+
+Now, analyze the image ad creative and provide the output in the JSON format above, ensuring all keys are filled.
+"""

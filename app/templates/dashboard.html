@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Ad Analyzer Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    </style>
+</head>
+<body class="h-full font-sans antialiased">
+    <div id="app" class="min-h-full">
+        <nav class="bg-white shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex">
+                        <div class="flex-shrink-0 flex items-center">
+                            <img class="h-8 w-auto" src="/api/placeholder/32/32" alt="AI Ad Analyzer Logo">
+                            <span class="ml-2 text-xl font-semibold text-gray-900">AI Ad Analyzer</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div class="px-4 py-6 sm:px-0">
+                <!-- Tabs -->
+                <div class="border-b border-gray-200">
+                    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                        <button onclick="showTab('focus-groups')" class="border-blue-500 text-blue-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" aria-current="page">
+                            Focus Groups
+                        </button>
+                        <button onclick="showTab('upload-creative')" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            Upload Creative
+                        </button>
+                        <button onclick="showTab('run-experiment')" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            Run Experiment
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Tab Content -->
+                <div class="mt-6">
+                    <!-- Focus Groups Tab -->
+                    <div class="mt-6">
+                        <!-- Focus Groups Tab -->
+                        <div id="focus-groups" class="space-y-6">
+                            <div class="flex justify-between items-center">
+                                <h2 class="text-2xl font-semibold text-gray-900">Focus Groups</h2>
+                                <button id="create-persona-btn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    Create Persona
+                                </button>
+                            </div>
+    
+                            <!-- Filter and Search -->
+                            <div class="flex space-x-4">
+                                <input type="text" placeholder="Search..." class="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <select class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                    <option>Filter by...</option>
+                                    <option>Age</option>
+                                    <option>Location</option>
+                                    <option>Interests</option>
+                                </select>
+                            </div>
+    
+                            <!-- Focus Groups Table -->
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age Range</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interests</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <!-- Sample rows, replace with dynamic data -->
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">John Doe</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">25-35</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">New York</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Sports, Technology</td>
+                                        </tr>
+                                        <!-- Add more rows as needed -->
+                                    </tbody>
+                                </table>
+                            </div>
+    
+                            <!-- Create Persona Modal -->
+                            <div id="create-persona-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+                                <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                                    <div class="mt-3 text-center">
+                                        <h3 class="text-lg leading-6 font-medium text-gray-900">Create Persona</h3>
+                                        <div class="mt-2 px-7 py-3">
+                                            <form id="create-persona-form" class="space-y-4">
+                                                <input type="text" name="name" placeholder="Name" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                                <input type="text" name="ageRange" placeholder="Age Range" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                                <input type="text" name="location" placeholder="Location" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                                <input type="text" name="interests" placeholder="Interests" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                                <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm"
+                                                        hx-post="/create-persona"
+                                                        hx-target="#create-response"
+                                                        hx-indicator="#create-loader">
+                                                    Create
+                                                </button>
+                                            </form>
+                                            <div id="create-loader" class="htmx-indicator">
+                                                <div class="spinner"></div>
+                                            </div>
+                                            <div id="create-response" class="mt-4"></div>
+                                        </div>
+                                        <div class="items-center px-4 py-3">
+                                            <button id="save-persona" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-300">
+                                                Save
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    <!-- Upload Creative Tab -->
+                    <div id="upload-creative" class="hidden space-y-6">
+                        <h2 class="text-2xl font-semibold text-gray-900">Upload Creative</h2>
+                        <form id="upload-form" class="space-y-4">
+                            <div class="flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                                <div class="space-y-1 text-center">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                    <div class="flex text-sm text-gray-600">
+                                        <label for="file-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                                            <span>Upload a file</span>
+                                            <input id="file-upload" name="file-upload" type="file" class="sr-only">
+                                        </label>
+                                        <p class="pl-1">or drag and drop</p>
+                                    </div>
+                                    <p class="text-xs text-gray-500">
+                                        PNG, JPG, GIF up to 10MB
+                                    </p>
+                                </div>
+                            </div>
+                            <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                Upload
+                            </button>
+                        </form>
+                        <div id="upload-preview" class="mt-4"></div>
+                    </div>
+
+                    <!-- Run Experiment Tab -->
+                    <div id="run-experiment" class="hidden space-y-6">
+                        <h2 class="text-2xl font-semibold text-gray-900">Run Experiment</h2>
+                        <button id="run-experiment-btn" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                hx-post="/run-experiment"
+                                hx-target="#experiment-results"
+                                hx-indicator="#experiment-loader">
+                            Run Experiment
+                        </button>
+                        <div id="experiment-loader" class="htmx-indicator">
+                            <div class="spinner"></div>
+                        </div>
+                        <div id="experiment-results" class="mt-4"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <style>
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .htmx-indicator {
+            display: none;
+        }
+        .htmx-request .htmx-indicator {
+            display: inline-block;
+        }
+        .htmx-request.htmx-indicator {
+            display: inline-block;
+        }
+    </style>
+
+    <script>
+        function showTab(tabId) {
+            // List of tab content IDs
+            const tabIds = ['focus-groups', 'upload-creative', 'run-experiment'];
+            // Hide all tabs
+            tabIds.forEach(id => {
+                const tab = document.getElementById(id);
+                if (tab) {
+                    tab.classList.add('hidden');
+                }
+            });
+            // Show the selected tab
+            const selectedTab = document.getElementById(tabId);
+            if (selectedTab) {
+                selectedTab.classList.remove('hidden');
+            }
+
+            // Update active tab styles
+            const tabButtons = document.querySelectorAll('nav button');
+            tabButtons.forEach(button => {
+                if (button.getAttribute('onclick').includes(tabId)) {
+                    button.classList.add('border-blue-500', 'text-blue-600');
+                    button.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+                } else {
+                    button.classList.remove('border-blue-500', 'text-blue-600');
+                    button.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Modal functionality (unchanged)
+            const modal = document.getElementById('create-persona-modal');
+            const createPersonaBtn = document.getElementById('create-persona-btn');
+            const savePersonaBtn = document.getElementById('save-persona');
+
+            createPersonaBtn.addEventListener('click', () => {
+                modal.classList.remove('hidden');
+            });
+
+            savePersonaBtn.addEventListener('click', () => {
+                modal.classList.add('hidden');
+                // Add logic to save the persona
+            });
+
+            // Close modal when clicking outside
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            });
+
+            // Initialize the first tab as active
+            showTab('focus-groups');
+        });
+    </script>
+</body>
+</html>

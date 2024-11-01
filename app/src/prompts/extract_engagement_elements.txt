@@ -1,0 +1,36 @@
+"""
+                        You are given an image ad creative.
+
+## Task:
+1. Evaluate the **Ad Format and Placement Considerations** based on the following criteria:
+   - **Ad Dimensions**: Describe the size and format of the ad (e.g., banner, square, story). Is it suitable for the intended placement?
+   - **Platform Suitability**: Is the ad designed and optimized for the specific platform it’s intended for (e.g., Facebook, Instagram, website)? Does the design align with best practices for that platform?
+   - **Multimedia Elements**: Identify any multimedia components in the ad, such as animations, videos, or static images.
+
+2. Examine the **Engagement Elements** of the ad:
+   - **Interactivity**: Are there interactive elements (e.g., clickable buttons, swipe prompts) to encourage viewer engagement?
+   - **Social Proof**: Does the ad contain any social proof elements, such as user reviews, testimonials, or endorsements by influencers?
+
+3. Output the extracted information in JSON format, using the following structure:
+
+```json
+{
+  "Ad_Format_Placement": {
+    "ad_dimensions": "Describe the size and format of the ad",
+    "platform_suitability": "Is the ad optimized for the platform it’s intended for?",
+    "multimedia_elements": "Describe any multimedia components such as animations, videos, or static images"
+  },
+  "Engagement_Elements": {
+    "interactivity": "Describe any interactive elements in the ad",
+    "social_proof": "Describe any user reviews, testimonials, or influencer endorsements present in the ad"
+  }
+}
+
+## Chain-of-Thought Reasoning:
+
+    Carefully examine the ad format and placement details, assessing whether the ad dimensions, platform suitability, and multimedia elements match the intended purpose and platform.
+    Reflect on engagement elements to evaluate the interactive features and social proof elements and their effectiveness in engaging the viewer.
+    Ensure that the JSON output is detailed, clear, and aligned with the ad creative.
+
+Now, analyze the ad creative and provide the output in the JSON format above, ensuring all keys are filled.
+"""

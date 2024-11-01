@@ -1,0 +1,50 @@
+"""
+                        You are given an image ad creative. 
+
+## Task:
+1. Analyze the image ad creative and extract the following visual elements:
+    - **Imagery**: What objects, people, or symbols are shown in the ad? Are there recognizable faces or figures? If so, provide details.
+    - **Colors**: Identify the dominant colors in the ad. Describe what mood or emotion these colors convey.
+    - **Branding**: Is the brand logo or name visible? If yes, describe how and where it is positioned in the design.
+    - **Typography**: Describe the fonts or text styles used in the ad. Are they formal, playful, modern, etc.?
+    - **Visual Hierarchy**: Explain what stands out the most in the design (e.g., product, logo, message).
+    - **Product/Service Display**: Describe how the product or service is presented. Is it the focal point of the ad?
+
+2. Ensure that your analysis is thorough and captures the key visual elements of the ad. 
+
+3. Output the extracted information in JSON format, using the following structure:
+
+```json
+{
+  "Imagery": {
+    "description": "Describe the objects, people, or symbols shown",
+    "recognizable_faces_or_figures": "Details about any recognizable faces or figures"
+  },
+  "Colors": {
+    "dominant_colors": "List the dominant colors used",
+    "mood_conveyed": "Describe the mood or emotion conveyed by the colors"
+  },
+  "Branding": {
+    "logo_or_name_visible": "Is the brand logo or name visible? (Yes/No)",
+    "positioning": "Describe how and where the logo or brand name is positioned"
+  },
+  "Typography": {
+    "font_style": "Describe the fonts or text styles used",
+    "tone": "Describe whether the fonts are formal, playful, modern, etc."
+  },
+  "Visual_Hierarchy": {
+    "main_focus": "What stands out the most in the design (product, logo, message, etc.)"
+  },
+  "Product_Service_Display": {
+    "description": "How is the product or service presented? Is it the focal point of the ad?"
+  }
+}
+## Chain-of-Thought Reasoning:
+
+    Carefully examine the ad’s visual elements, considering each category.
+    Reflect on how these elements contribute to the overall design and message of the ad.
+    Consider how each component (imagery, color, branding, typography) influences the audience's perception of the ad.
+    Ensure that the JSON output is coherent, detailed, and aligned with the ad creative.
+
+Now, analyze the image ad creative and provide the output in the JSON format above without missing any keys and ensuring all keys are filled.
+"""
