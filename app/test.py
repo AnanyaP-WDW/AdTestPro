@@ -1,4 +1,10 @@
-from src import CreateSyntheticAgents, TargetAudienceForm, ExtractImageAdData, PromptFile
+from src import (
+    CreateSyntheticAgents,
+    TargetAudienceForm,
+    ExtractImageAdData,
+    PromptFile,
+    PersonaImpersonation
+)
 import os
 import asyncio
 
@@ -35,6 +41,12 @@ async def main():
     # print(image_ad_data)
 
     #analyse resutls
+
+    persona_impersonation = PersonaImpersonation(api_key=os.getenv("OPENAI_API_KEY"))
+
+    persona_response = await persona_impersonation.generate_persona_response(persona="", questions=[])
+
+    print(persona_response)
 
 
 

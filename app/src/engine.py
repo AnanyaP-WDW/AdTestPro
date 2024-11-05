@@ -35,5 +35,5 @@ async def run_engine():
     ad_data = await extract_image_ad_data.generate_response()
     
     print("\nExtracted Image Ad Data:")
-    print(engagement_elements)
+    print(ad_data)
     

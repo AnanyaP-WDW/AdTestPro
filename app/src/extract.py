@@ -104,13 +104,17 @@ class ExtractImageAdData(OpenaiClient):
             raise Exception(f"OpenAI API request exceeded rate limit: {e}")
         
     async def generate_response(self):
-
         # code to extract visual elements, text_tone, engagement elements at once
-        tasks = [self.call_openai_api(prompt_file=PromptFile.EXTRACT_VISUAL_ELEMENTS),
-                 self.call_openai_api(prompt_file=PromptFile.EXTRACT_TEXT_TONE),
-                 self.call_openai_api(prompt_file=PromptFile.EXTRACT_ENGAGEMENT_ELEMENTS)
-                 ]  
 
-        # Run tasks concurrently
-        responses = await asyncio.gather(*tasks)
-        return responses
+        try:
+            tasks = [self.call_openai_api(prompt_file=PromptFile.EXTRACT_VISUAL_ELEMENTS),
+                     self.call_openai_api(prompt_file=PromptFile.EXTRACT_TEXT_TONE),
+                     self.call_openai_api(prompt_file=PromptFile.EXTRACT_ENGAGEMENT_ELEMENTS)
+                     ]  
+
+            # Run tasks concurrently
+            responses = await asyncio.gather(*tasks)
+            return responses
+        except Exception as e:
+            self.log_error(f"An error occurred while generating responses: {e}")
+            raise Exception(f"An error occurred while generating responses: {e}")

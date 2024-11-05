@@ -173,7 +173,7 @@ class PersonaImpersonation(OpenaiClient):
     def __init__(self, api_key: str):
         super().__init__(api_key=os.getenv("OPENAI_API_KEY"))
 
-    async def generate_persona_response(self, persona: str, questions: List[str]) -> Dict[str, str]:
+    async def generate_persona_response(self, persona: Dict[str, Any], questions: List[str]) -> Dict[str, str]:
         """Generate responses for a given persona and list of questions."""
         try:
             # Read the prompt content from the persona_response.txt file
