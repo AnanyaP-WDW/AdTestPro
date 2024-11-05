@@ -3,12 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Index Test Page</title>
+    <title>AI Ad Analyzer</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .content-section {
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .content-section.active {
+            opacity: 1;
+        }
+    </style>
 </head>
-<body>
-    <div class="container">
-        <h1>Welcome to the Index Test Page</h1>
-        <p>This is a simple test page to verify the index functionality.</p>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <h1 class="text-xl font-bold text-gray-900">AI Ad Analyzer</h1>
+                    </div>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <button 
+                            class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                            hx-get="/"
+                            hx-target="#main-content"
+                            hx-push-url="true"
+                            hx-trigger="click"
+                            _="on click add .border-blue-500 to me remove .border-transparent from me
+                                remove .border-blue-500 from .nav-link add .border-transparent to .nav-link">
+                            Dashboard
+                        </button>
+                        <button 
+                            class="nav-link inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            hx-get="/agents"
+                            hx-target="#main-content"
+                            hx-push-url="true"
+                            hx-trigger="click"
+                            _="on click add .border-blue-500 to me remove .border-transparent from me
+                                remove .border-blue-500 from .nav-link add .border-transparent to .nav-link">
+                            Generate Agents
+                        </button>
+                        <button 
+                            class="nav-link inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            hx-get="/analyze"
+                            hx-target="#main-content"
+                            hx-push-url="true"
+                            hx-trigger="click"
+                            _="on click add .border-blue-500 to me remove .border-transparent from me
+                                remove .border-blue-500 from .nav-link add .border-transparent to .nav-link">
+                            Analyze Ad
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div id="main-content" class="content-section">
+            <!-- Dashboard Content -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-6">
+                        <h3 class="text-lg font-medium text-gray-900">Generate Synthetic Agents</h3>
+                        <p class="mt-2 text-sm text-gray-500">
+                            Create detailed personas for your target audience testing. Generate multiple agents with unique characteristics and backgrounds.
+                        </p>
+                        <div class="mt-4">
+                            <button 
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                                hx-get="/agents"
+                                hx-target="#main-content"
+                                hx-push-url="true">
+                                Get Started
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-6">
+                        <h3 class="text-lg font-medium text-gray-900">Analyze Ad Creative</h3>
+                        <p class="mt-2 text-sm text-gray-500">
+                            Upload and analyze your ad creative. Get detailed insights about visual elements, engagement factors, and text tone.
+                        </p>
+                        <div class="mt-4">
+                            <button 
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                                hx-get="/analyze"
+                                hx-target="#main-content"
+                                hx-push-url="true">
+                                Start Analysis
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Loading Indicator -->
+    <div id="global-loading" 
+         class="htmx-indicator fixed top-0 left-0 w-full h-1 bg-blue-600 transition-transform duration-300"
+         style="transform: translateX(-100%)">
     </div>
+
+    <script>
+        // Add smooth transitions for content changes
+        document.body.addEventListener('htmx:beforeSwap', function(evt) {
+            const contentSection = document.querySelector('.content-section');
+            contentSection.classList.remove('active');
+        });
+
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            const contentSection = document.querySelector('.content-section');
+            setTimeout(() => {
+                contentSection.classList.add('active');
+            }, 50);
+        });
+
+        // Handle browser back/forward buttons
+        window.onpopstate = function() {
+            const path = window.location.pathname;
+            htmx.ajax('GET', path, {target: '#main-content'});
+        }
+
+        // Initialize active state
+        document.addEventListener('DOMContentLoaded', function() {
+            const contentSection = document.querySelector('.content-section');
+            contentSection.classList.add('active');
+        });
+    </script>
 </body>
 </html>

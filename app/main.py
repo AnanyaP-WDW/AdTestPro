@@ -7,6 +7,9 @@ import uvicorn
 import ast
 import python_multipart
 import asyncio
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from fastapi import Request
 
 from app.src.engine import CreateSyntheticAgents, TargetAudienceForm
 from app.src.extract import ExtractImageAdData, PromptFile
@@ -26,6 +29,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+templates = Jinja2Templates(directory="app/templates")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 class TargetAudienceRequest(BaseModel):
     description: str
@@ -157,6 +163,34 @@ async def analyze_ad_image(
             status_code=500,
             detail=f"Error analyzing image: {str(e)}"
         )
+
+@app.get("/")
+async def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/agents")
+async def agents_page(request: Request):
+    return templates.TemplateResponse("agents.html", {"request": request})
+
+@app.get("/analyze")
+async def analyze_page(request: Request):
+    return templates.TemplateResponse("analyze.html", {"request": request})
+
+@app.get("/agents-content")
+async def agents_content(request: Request):
+    return templates.TemplateResponse(
+        "agents.html", 
+        {"request": request}, 
+        headers={"HX-Push-Url": "/agents"}
+    )
+
+@app.get("/analyze-content")
+async def analyze_content(request: Request):
+    return templates.TemplateResponse(
+        "analyze.html", 
+        {"request": request}, 
+        headers={"HX-Push-Url": "/analyze"}
+    )
 
 if __name__ == "__main__":
     import uvicorn
