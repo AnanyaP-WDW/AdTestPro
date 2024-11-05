@@ -108,19 +108,22 @@ async def analyze_ad_image(
                 "visual_elements": PromptFile.EXTRACT_VISUAL_ELEMENTS
             }
 
-            valid_prompt_types = ["engagement_elements", "text_tone", "visual_elements"]
-            if any(pt not in valid_prompt_types for pt in prompt_types):
-                print(pt not in valid_prompt_types for pt in prompt_types)
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid prompt types. Supported types: {valid_prompt_types}. You provided: {prompt_types}"
-                )
+            prompt_types = prompt_types[0].split(",")
 
-            tasks = [image_analyzer.call_openai_api(prompt_file=prompt_mapping[pt]) for pt in prompt_types]
+            print("before task")
+            tasks = [ asyncio.create_task(image_analyzer.call_openai_api(prompt_file=PromptFile.EXTRACT_VISUAL_ELEMENTS)),
+                      asyncio.create_task(image_analyzer.call_openai_api(prompt_file=PromptFile.EXTRACT_TEXT_TONE)),
+                      asyncio.create_task(image_analyzer.call_openai_api(prompt_file=PromptFile.EXTRACT_ENGAGEMENT_ELEMENTS))
+                     ]  
+
+            # Run tasks concurrently
             analysis_results = await asyncio.gather(*tasks)
-
+            # tasks = [await image_analyzer.call_openai_api(prompt_file=prompt_mapping[pt]) for pt in prompt_types]
+            # analysis_results = await asyncio.gather(*tasks)
+            print("after task")
             # Process results
             processed_results = {}
+            print(f"prompt types: {prompt_types}, and type : {type(prompt_types)}")
             for pt, result in zip(prompt_types, analysis_results):
                 try:
                     # If result is a string, parse it
