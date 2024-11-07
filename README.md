@@ -50,6 +50,19 @@ To get started with the open-source version of AdTestPro, follow these steps:
     docker compose up
     ```
 
+## License
+
+AdTestPro is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). This means:
+
+- You can use, modify, and distribute this software freely
+- If you modify and use this software in a network service, you must provide the complete source code to users
+- Any modifications must also be licensed under AGPL-3.0
+- No warranty is provided
+
+For the complete license terms, see the [LICENSE](LICENSE) file in the repository.
+
+For commercial licensing options, please contact pathakananya95@gmail.com.
+
 ## Frequently Asked Questions (FAQ)
 
 1. **What is AdTestPro?**  
@@ -69,3 +82,4 @@ To get started with the open-source version of AdTestPro, follow these steps:
 
 6. **How can I contribute to the project?**  
    We welcome contributions! You can fork the repo, make changes, and submit a pull request. Refer to the **Contributing** section above for details.
+
