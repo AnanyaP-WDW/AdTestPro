@@ -45,6 +45,12 @@ class ImageAnalysisResponse(BaseModel):
     status: str
     data: Dict[str, Any]
 
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
+# Generate agents endpoint
 @app.post("/api/generate-agents")
 async def generate_agents(target_audience: TargetAudienceRequest):
     try:
@@ -65,7 +71,6 @@ async def generate_agents(target_audience: TargetAudienceRequest):
         )
 
         # Generate the response
-        
         agents = await creator.generate_response()
         
         try:
@@ -86,10 +91,6 @@ async def generate_agents(target_audience: TargetAudienceRequest):
             status_code=500,
             detail=str(e)
         )
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
 
 @app.post("/api/analyze-ad-image", response_model=ImageAnalysisResponse)
 async def analyze_ad_image(
@@ -116,7 +117,6 @@ async def analyze_ad_image(
 
             prompt_types = prompt_types[0].split(",")
 
-            print("before task")
             tasks = [ asyncio.create_task(image_analyzer.call_openai_api(prompt_file=PromptFile.EXTRACT_VISUAL_ELEMENTS)),
                       asyncio.create_task(image_analyzer.call_openai_api(prompt_file=PromptFile.EXTRACT_TEXT_TONE)),
                       asyncio.create_task(image_analyzer.call_openai_api(prompt_file=PromptFile.EXTRACT_ENGAGEMENT_ELEMENTS))
@@ -124,9 +124,7 @@ async def analyze_ad_image(
 
             # Run tasks concurrently
             analysis_results = await asyncio.gather(*tasks)
-            # tasks = [await image_analyzer.call_openai_api(prompt_file=prompt_mapping[pt]) for pt in prompt_types]
-            # analysis_results = await asyncio.gather(*tasks)
-            print("after task")
+            
             # Process results
             processed_results = {}
             print(f"prompt types: {prompt_types}, and type : {type(prompt_types)}")

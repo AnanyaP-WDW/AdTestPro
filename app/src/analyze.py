@@ -2,7 +2,7 @@ from .client import OpenaiClient
 import openai
 from .utils import read_prompt_file, add_variable_to_prompt, PromptFile
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Union
 from enum import Enum
 
 
@@ -29,8 +29,8 @@ class SurveyQuestions:
     '''
     def __init__(self):
         self.questions = [
-            "What action is the viewer encouraged to take?",
-            "What emotions does the ad evoke?",
+            "What action are you encouraged to take?",
+            "What emotions does the ad evoke in you?",
             "What elements suggest the target demographic?",
             "Is the call-to-action prominent and compelling?",
             "What is the tone and style of the ad?",
@@ -163,17 +163,25 @@ class FocusGroupAnalysis(OpenaiClient):
         questions = self.survey.get_selected_questions()
 
         for persona in personas:
-            responses = await persona_impersonator.generate_persona_response(persona, questions)
+            responses = await persona_impersonator.generate_persona_response(persona, persona)
             await self.add_focus_group_response(persona, responses)
 
         return await self.analyze_focus_group_responses()
 
 
 class PersonaImpersonation(OpenaiClient):
-    def __init__(self, api_key: str):
+    '''
+    Generate responses for a given persona and list of questions.
+    All personas have the same set of questions.
+    All personas results are stored in the same list.
+    - questions: List[str] | str
+    '''
+    def __init__(self, api_key: str, questions: List[str]|str):
         super().__init__(api_key=os.getenv("OPENAI_API_KEY"))
+        self.questions = questions
+        self.persona_responses = PersonaResponses()
 
-    async def generate_persona_response(self, persona: Dict[str, Any], questions: List[str]) -> Dict[str, str]:
+    async def generate_persona_response(self, persona: Dict[str, Any], persona_id: int) -> None:
         """Generate responses for a given persona and list of questions."""
         try:
             # Read the prompt content from the persona_response.txt file
@@ -181,7 +189,7 @@ class PersonaImpersonation(OpenaiClient):
             
             # Add the persona and questions to the prompt
             prompt_content = await add_variable_to_prompt(prompt_content, "persona", persona)
-            prompt_content = await add_variable_to_prompt(prompt_content, "questions", "\n".join(questions))
+            prompt_content = await add_variable_to_prompt(prompt_content, "questions", "\n".join(self.questions))
 
             response = await self.aclient.chat.completions.create(
                 model="gpt-4o",
@@ -201,9 +209,52 @@ class PersonaImpersonation(OpenaiClient):
                 response_format={"type": "json_object"}
             )
             # Assuming the response is structured as a JSON object with question-response pairs
-            return response.choices[0].message.content
+            response_content = response.choices[0].message.content
+            self.persona_responses.add_response(persona_id, persona.get("name", "Unknown"), response_content)
+            self.log_info(f"Generated response for persona ID: {persona_id}, persona name: {persona.get('name', 'Unknown')}")
 
         except Exception as e:
             self.log_error(f"Error generating persona response: {str(e)}")
             raise
 
+class PersonaResponses:
+    """Handles storage and retrieval of persona responses."""
+    
+    def __init__(self):
+        self._responses = []
+
+    def __len__(self) -> int:
+        """Return the number of stored responses."""
+        return len(self._responses)
+
+    def __getitem__(self, index: int) -> Dict[str, Union[int, str, Dict[str, str]]]:
+        """Retrieve a response by index."""
+        return self._responses[index]
+
+    def __iter__(self):
+        """Return an iterator over the responses."""
+        return iter(self._responses)
+
+    def add_response(self, persona_id: int, persona_name: str, response: Dict[str, str]) -> None:
+        """Add a response for a given persona."""
+        self._responses.append({
+            "persona_id": persona_id,
+            "persona_name": persona_name,
+            "response": response
+        })
+
+    def get_all_responses(self) -> List[Dict[str, Union[int, str, Dict[str, str]]]]:
+        """Return all stored responses."""
+        return self._responses
+
+    def get_response_by_id(self, persona_id: int) -> Union[Dict[str, Union[int, str, Dict[str, str]]], None]:
+        """Retrieve a response by persona ID."""
+        return next((resp for resp in self._responses if resp["persona_id"] == persona_id), None)
+
+    def get_response_by_name(self, persona_name: str) -> List[Dict[str, Union[int, str, Dict[str, str]]]]:
+        """Retrieve responses by persona name."""
+        return [resp for resp in self._responses if resp["persona_name"] == persona_name]
+
+    def clear_responses(self) -> None:
+        """Clear all stored responses."""
+        self._responses.clear()

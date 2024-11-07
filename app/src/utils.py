@@ -30,7 +30,7 @@ async def read_prompt_file(filename: str) -> str:
 
 async def add_variable_to_prompt(prompt: str, variable: str, value: str) -> str:
     """
-    Adds a variable to a prompt.
+    Adds a variable to a prompt. If the value is a dictionary, it converts it to a string.
     
     :param prompt: The prompt to add the variable to.
     :param variable: The variable to add.
@@ -38,6 +38,8 @@ async def add_variable_to_prompt(prompt: str, variable: str, value: str) -> str:
     :return: The prompt with the variable added.
     """
     try:
+        if isinstance(value, dict):
+            value = str(value)
         return prompt.replace(f"{{{variable}}}", value)
     except Exception as e:
         raise Exception(f"Error adding variable to prompt: {e}")

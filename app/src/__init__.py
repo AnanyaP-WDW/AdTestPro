@@ -2,7 +2,11 @@ from .audience import CreateSyntheticAgents
 from .extract import ExtractImageAdData
 from .models import TargetAudienceForm
 from .utils import PromptFile   
-from .analyze import FocusGroupAnalysis, SurveyQuestionEnum, PersonaImpersonation
+from .analyze import (FocusGroupAnalysis, 
+                      SurveyQuestions, 
+                      PersonaImpersonation,
+                      SurveyQuestionEnum
+                      )
 
 __all__ = [
     "CreateSyntheticAgents", 
@@ -11,5 +15,6 @@ __all__ = [
     "PromptFile",
     "FocusGroupAnalysis",
     "SurveyQuestionEnum",
-    "PersonaImpersonation"
+    "PersonaImpersonation",
+    "SurveyQuestions"
 ]

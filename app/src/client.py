@@ -1,7 +1,3 @@
-
-
-
-
 from openai import AsyncOpenAI
 import logging
 
@@ -28,18 +24,20 @@ class OpenaiClient:
     def setup_logging(self):
         self.logger.setLevel(logging.DEBUG)
 
-        # Create a console handler and set level to debug
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.DEBUG)
+        # Check if the logger already has handlers to avoid duplicates
+        if not self.logger.handlers:
+            # Create a console handler and set level to debug
+            ch = logging.StreamHandler()
+            ch.setLevel(logging.DEBUG)
 
-        # Create a formatter
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            # Create a formatter
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-        # Add formatter to ch
-        ch.setFormatter(formatter)
+            # Add formatter to ch
+            ch.setFormatter(formatter)
 
-        # Add ch to logger
-        self.logger.addHandler(ch)
+            # Add ch to logger
+            self.logger.addHandler(ch)
 
     def log_info(self, message: str):
         self.logger.info(message)
