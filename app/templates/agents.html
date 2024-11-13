@@ -69,8 +69,90 @@
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
 
-            <div id="results" class="mt-6"></div>
+            <div id="results" class="mt-6">
+                <!-- Results will be displayed here -->
+                <div id="question-selection" class="hidden mt-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Select Questions (Max 3)</h3>
+                    <div class="space-y-2">
+                        <div class="flex items-center">
+                            <input type="checkbox" name="questions" value="action" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <label class="ml-2 text-sm text-gray-700">What action are you encouraged to take?</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" name="questions" value="brand_recall" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <label class="ml-2 text-sm text-gray-700">How is the Brand recall of this ad creative?</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" name="questions" value="appeal" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <label class="ml-2 text-sm text-gray-700">How appealing does this ad creative feel?</label>
+                        </div>
+                        <!-- Add more questions as needed -->
+                    </div>
+                    
+                    <button onclick="runImpersonation()" 
+                            class="mt-4 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Run Impersonation
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
+
+    <script>
+    // ... existing script ...
+
+    // After successful agent generation, show question selection
+    function showQuestionSelection(agentsData) {
+        document.getElementById('question-selection').classList.remove('hidden');
+        // Store agents data for later use
+        window.generatedAgents = agentsData;
+    }
+
+    function runImpersonation() {
+        // Get selected questions
+        const selectedQuestions = Array.from(document.querySelectorAll('input[name="questions"]:checked'))
+            .map(cb => cb.value);
+        
+        if (selectedQuestions.length === 0 || selectedQuestions.length > 3) {
+            alert('Please select between 1 and 3 questions.');
+            return;
+        }
+
+        // Get stored agents data
+        const agentsData = window.generatedAgents;
+        
+        // Make API call
+        fetch('/api/run-impersonation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                personas: agentsData.personas,
+                selected_questions: selectedQuestions
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Display impersonation results
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error running impersonation');
+        });
+    }
+
+    // Update the existing success handler to show question selection
+    document.addEventListener('htmx:afterRequest', function(evt) {
+        if (evt.detail.successful && evt.detail.target.id === 'results') {
+            const response = JSON.parse(evt.detail.xhr.response);
+            if (response.status === 'success') {
+                showQuestionSelection(response.data);
+            }
+        }
+    });
+    </script>
 </body>
 </html> 
