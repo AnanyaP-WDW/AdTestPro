@@ -13,6 +13,7 @@ from fastapi import Request
 
 from app.src.engine import CreateSyntheticAgents, TargetAudienceForm
 from app.src.extract import ExtractImageAdData, PromptFile
+from app.src.analyze import SurveyQuestions, SurveyQuestionEnum, PersonaImpersonation
 
 
 app = FastAPI(
@@ -44,6 +45,10 @@ class TargetAudienceRequest(BaseModel):
 class ImageAnalysisResponse(BaseModel):
     status: str
     data: Dict[str, Any]
+
+class PersonaImpersonationRequest(BaseModel):
+    personas: List[Dict[str, Any]]
+    selected_questions: List[str]
 
 # Health check endpoint
 @app.get("/health")
@@ -162,15 +167,82 @@ async def analyze_ad_image(
             detail=f"Error analyzing image: {str(e)}"
         )
 
+@app.post("/api/run-impersonation")
+async def run_impersonation(request: PersonaImpersonationRequest):
+    try:
+        # Create SurveyQuestions instance
+        survey_questions = SurveyQuestions()
+        
+        # Convert string question names to enums
+        question_enum_map = {
+            "action": SurveyQuestionEnum.ACTION,
+            "brand_recall": SurveyQuestionEnum.BRAND_RECALL_SCORE,
+            "appeal": SurveyQuestionEnum.APPEAL_SCORE,
+            "emotions": SurveyQuestionEnum.EMOTIONS,
+            "target_demographic": SurveyQuestionEnum.TARGET_DEMOGRAPHIC,
+            "call_to_action": SurveyQuestionEnum.CALL_TO_ACTION,
+            "tone_and_style": SurveyQuestionEnum.TONE_AND_STYLE,
+            "positives": SurveyQuestionEnum.POSITIVES,
+            "negatives": SurveyQuestionEnum.NEGATIVES,
+            "improvements": SurveyQuestionEnum.IMPROVEMENTS,
+            "engagement": SurveyQuestionEnum.ENGAGEMENT_SCORE,
+            "believability": SurveyQuestionEnum.BELIEVABILITY_SCORE,
+            "relevance": SurveyQuestionEnum.RELEVANCE_SCORE,
+            "trustworthy": SurveyQuestionEnum.TRUSTWORTHY_SCORE
+        }
+        
+        # Convert selected questions to enums
+        selected_enums = [question_enum_map[q] for q in request.selected_questions]
+        
+        # Select questions
+        survey_questions.select_questions(selected_enums)
+        selected_questions = survey_questions.get_selected_questions()
+
+        # Initialize PersonaImpersonation
+        persona_impersonation = PersonaImpersonation(
+            api_key=os.getenv("OPENAI_API_KEY"), 
+            questions=selected_questions
+        )
+
+        # Generate responses for each persona
+        for persona_id, persona in enumerate(request.personas, start=1):
+            await persona_impersonation.generate_persona_response(
+                persona=persona, 
+                persona_id=persona_id
+            )
+
+        # Get all responses
+        all_responses = persona_impersonation.persona_responses.get_all_responses()
+
+        return {
+            "status": "success",
+            "data": all_responses
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error running persona impersonation: {str(e)}"
+        )
+
 @app.get("/")
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-@app.get("/agents")
+@app.get("/generate-participants")
 async def agents_page(request: Request):
     return templates.TemplateResponse("agents.html", {"request": request})
 
-@app.get("/analyze")
+@app.get("/dashboard")
+async def agents_page(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
+
+@app.get("/upload-analyze-ad")
 async def analyze_page(request: Request):
     return templates.TemplateResponse("analyze.html", {"request": request})
 
@@ -188,6 +260,36 @@ async def analyze_content(request: Request):
         "analyze.html", 
         {"request": request}, 
         headers={"HX-Push-Url": "/analyze"}
+    )
+
+# Add this new endpoint to get the questions dynamically
+@app.get("/api/survey-questions")
+async def get_survey_questions(request: Request):
+    # Create SurveyQuestions instance to get all available questions
+    survey_questions = SurveyQuestions()
+    
+    # Get all available questions as a dict with enum value -> question text
+    questions = {
+        "action": "What action are you encouraged to take?",
+        "brand_recall": "How is the Brand recall of this ad creative?",
+        "appeal": "How appealing does this ad creative feel?",
+        "emotions": "What emotions does this ad evoke?",
+        "target_demographic": "Who is the target demographic?",
+        "call_to_action": "How effective is the call to action?",
+        "tone_and_style": "What is the tone and style of the ad?",
+        "positives": "What are the positive aspects?",
+        "negatives": "What are the negative aspects?",
+        "improvements": "What improvements would you suggest?",
+        "engagement": "How engaging is this ad?",
+        "believability": "How believable is this ad?",
+        "relevance": "How relevant is this ad to you?",
+        "trustworthy": "How trustworthy does this ad feel?"
+    }
+    
+    # Return the template response instead of JSON
+    return templates.TemplateResponse(
+        "partials/survey_questions.html", 
+        {"request": request, "questions": questions}
     )
 
 if __name__ == "__main__":
