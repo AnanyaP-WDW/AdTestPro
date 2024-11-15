@@ -1,5 +1,11 @@
 # AdTestPro
 
+![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)
+![Python Version](https://img.shields.io/badge/python-3.11-blue.svg)
+![GitHub last commit](https://img.shields.io/github/last-commit/AnanyaP-WDW/AdTestPro)
+![Docker pulls](https://img.shields.io/docker/pulls/ananyap/adtestpro)
+![Docker image size](https://img.shields.io/docker/image-size/ananyap/adtestpro)
+
 AdTestPro is an open-source platform that allows users to get AI-generated personas to test their ad creatives.
 
 ## Overview
@@ -45,7 +51,14 @@ To get started with the open-source version of AdTestPro, follow these steps:
    git clone https://github.com/AnanyaP-WDW/AdTestPro.git
    ```
 
-2. **Build dockre container and run**:
+2. **Create .env file in root**:
+   Copy paste in .env
+   ```
+   OPENAI_API_KEY= PUT-YOUR-API-KEY
+   ```
+   Replace variable PUT-YOUR-API-KEY with your own OpenAI key. Refer to [.env.sample](.env.sample)
+
+3. **Build docker container and run**:
     ```
     docker compose up
     ```
