@@ -61,8 +61,49 @@
                 </div>
 
                 <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-4">Select Questions for Analysis (Max 3)</label>
+                    <div id="questions-container" class="mt-2"
+                         hx-get="/api/survey-questions"
+                         hx-trigger="load"
+                         hx-indicator="#questions-loading">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Select
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Select Questions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <!-- Questions will be loaded here -->
+                                <tr id="questions-loading" class="htmx-indicator">
+                                    <td colspan="2" class="px-6 py-4 text-center">
+                                        <div class="flex justify-center">
+                                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <div class="mt-4 flex items-center justify-between">
+                            <span class="text-sm text-gray-500" id="selected-count">0 of 3 questions selected</span>
+                            <button type="button" 
+                                    id="finalize-questions"
+                                    disabled
+                                    class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                Finalize Questions
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-6 border-t border-gray-200 mt-6">
                     <button type="submit"
-                        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         Analyze Image
                     </button>
                 </div>
@@ -132,6 +173,59 @@
             const event = new Event('change');
             document.querySelector('input[type="file"]').dispatchEvent(event);
         }
+
+        // Update the questions container when questions are loaded
+        document.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.id === 'questions-container') {
+                updateSelectedCount();
+            }
+        });
+
+        // Add event listener to enforce max 3 questions and update count
+        document.addEventListener('change', function(evt) {
+            if (evt.target.matches('[name="questions"]')) {
+                const checked = document.querySelectorAll('[name="questions"]:checked');
+                if (checked.length > 3) {
+                    evt.target.checked = false;
+                    alert('Please select maximum 3 questions');
+                }
+                updateSelectedCount();
+            }
+        });
+
+        function updateSelectedCount() {
+            const checked = document.querySelectorAll('[name="questions"]:checked');
+            const countDisplay = document.getElementById('selected-count');
+            const finalizeButton = document.getElementById('finalize-questions');
+            
+            countDisplay.textContent = `${checked.length} of 3 questions selected`;
+            
+            // Enable/disable finalize button based on selection
+            finalizeButton.disabled = checked.length === 0;
+        }
+
+        // Handle finalize button click
+        document.getElementById('finalize-questions')?.addEventListener('click', function() {
+            const checked = document.querySelectorAll('[name="questions"]:checked');
+            if (checked.length === 0) {
+                alert('Please select at least one question');
+                return;
+            }
+            
+            // Disable all unchecked checkboxes
+            document.querySelectorAll('[name="questions"]:not(:checked)').forEach(checkbox => {
+                checkbox.disabled = true;
+            });
+            
+            // Disable the finalize button
+            this.disabled = true;
+            
+            // Show confirmation message
+            const confirmationMsg = document.createElement('div');
+            confirmationMsg.className = 'mt-2 text-sm text-green-600';
+            confirmationMsg.textContent = 'Questions finalized! You can now proceed with the analysis.';
+            this.parentNode.appendChild(confirmationMsg);
+        });
     </script>
 </body>
 </html> 

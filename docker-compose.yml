@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  api:
+  app:
     build: .
-    container_name: synthetic-agents-api
+    container_name: AdTestPro
     volumes:
       - .:/app
     ports:
