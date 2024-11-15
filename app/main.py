@@ -17,8 +17,8 @@ from app.src.analyze import SurveyQuestions, SurveyQuestionEnum, PersonaImperson
 
 
 app = FastAPI(
-    title="Synthetic Agents API",
-    description="API for generating synthetic audience agents",
+    title="AdTestPro",
+    description="Synthetic Focus Group testing for ad creatives",
     version="1.0.0"
 )
 
@@ -231,8 +231,14 @@ async def run_impersonation(request: PersonaImpersonationRequest):
         )
 
 @app.get("/")
-async def home(request: Request):
+async def root(request: Request):
+    """Serve the base template"""
     return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/home")
+async def home(request: Request):
+    """Serve the home template"""
+    return templates.TemplateResponse("home.html", {"request": request})
 
 @app.get("/generate-participants")
 async def agents_page(request: Request):
@@ -240,11 +246,11 @@ async def agents_page(request: Request):
 
 @app.get("/dashboard")
 async def agents_page(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse("agents.html", {"request": request})
 
-@app.get("/upload-analyze-ad")
+@app.get("/run-focusgroup-survey")
 async def analyze_page(request: Request):
-    return templates.TemplateResponse("analyze.html", {"request": request})
+    return templates.TemplateResponse("run-focusgroup-survey.html", {"request": request})
 
 @app.get("/agents-content")
 async def agents_content(request: Request):
@@ -289,7 +295,8 @@ async def get_survey_questions(request: Request):
     # Return the template response instead of JSON
     return templates.TemplateResponse(
         "partials/survey_questions.html", 
-        {"request": request, "questions": questions}
+        {"request": request, 
+         "questions": survey_questions.question_map }
     )
 
 if __name__ == "__main__":

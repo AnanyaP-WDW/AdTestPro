@@ -1,0 +1,48 @@
+<!-- Dashboard Content -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-6">
+            <h3 class="text-lg font-medium text-gray-900">Generate Synthetic Participants</h3>
+            <p class="mt-2 text-sm text-gray-500 group relative">
+                Create detailed personas from your target audience. 
+                <span class="group-hover:block hidden absolute z-10 bg-black text-white text-xs rounded p-2 w-64 -bottom-24">
+                    The system will generate 3 unique personas based on your target audience parameters. Each persona will have detailed characteristics including demographics, psychographics, shopping behavior, and communication style - making them ideal for focus group participation.
+                </span>
+                The personas will generate multiple agents with unique characteristics and backgrounds.
+            </p>
+            <div class="mt-4">
+                <button 
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                    hx-get="/generate-participants"
+                    hx-target="#main-content"
+                    hx-push-url="true">
+                    Get Started
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-6">
+            <h3 class="text-lg font-medium text-gray-900">Run Focus Group Survey</h3>
+            <p class="mt-2 text-sm text-gray-500">
+                1) Upload and analyze your ad creative. 
+            </p>
+            <p class="mt-2 text-sm text-gray-500">
+                2) Choose questions for the survey.
+            </p>
+            <p class="mt-2 text-sm text-gray-500">
+                3) Run the survey.
+            </p>
+            <div class="mt-4">
+                <button 
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                    hx-get="/run-focusgroup-survey"
+                    hx-target="#main-content"
+                    hx-push-url="true">
+                    Start Analysis
+                </button>
+            </div>
+        </div>
+    </div>
+</div> 
