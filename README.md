@@ -3,10 +3,16 @@
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)
 ![Python Version](https://img.shields.io/badge/python-3.11-blue.svg)
 ![GitHub last commit](https://img.shields.io/github/last-commit/AnanyaP-WDW/AdTestPro)
-![Docker pulls](https://img.shields.io/docker/pulls/ananyap/adtestpro)
-![Docker image size](https://img.shields.io/docker/image-size/ananyap/adtestpro)
 
-AdTestPro is an open-source platform that allows users to get AI-generated personas to test their ad creatives.
+AdTestPro is an open-source tool to gain qualitative and actionable insights from ad creatives (Meta, Google, Email). Right now AdTestPro only supports image ad's.
+
+## Features
+
+- **Target Audience Enrichment**
+- **Ad Creative Testing**
+- **Consolidated Reporting**
+- **Customizable Personas**
+- **Scalable Testing**
 
 ## Overview
 
@@ -21,26 +27,6 @@ AdTestPro is a tool that helps marketers and advertisers validate their ad conce
 4. **Consolidated Feedback**: The responses and feedback from the synthetic personas are collected, analyzed, and presented to the user in an easy-to-understand format.
 
 This allows marketers to get valuable insights into how their target audience might respond to their ads, without the need for a real-world focus group.
-
-## Features
-
-- **Target Audience Enrichment**
-- **Ad Creative Testing**
-- **Consolidated Reporting**
-- **Customizable Personas**
-- **Scalable Testing**
-
-## Commercial Licensing and Support
-
-In addition to the open-source version, AdTestPro also offers commercial licensing and support options for businesses:
-
-1. **Commercial Licensing**: Organizations can purchase a commercial license to use AdTestPro in a production environment. This includes access to premium features, dedicated support, and a guaranteed SLA.
-
-2. **Paid Setup and Deployment**: For enterprises, AdTestPro offers a paid setup and deployment service. This includes assistance with integrating the platform into your existing marketing technology stack, as well as comprehensive training for your team.
-
-3. **Maintenance and Support**: Commercial customers also have access to ongoing maintenance and support for the AdTestPro platform. This includes bug fixes, feature updates, and dedicated support from our team of experts.
-
-To learn more about the commercial offerings and pricing, <!--please visit our [website](https://www.syntheticadtesting.com) --> contact pathakananya95@gmail.com.
 
 ## Getting Started
 
@@ -95,4 +81,16 @@ For commercial licensing options, please contact pathakananya95@gmail.com.
 
 6. **How can I contribute to the project?**  
    We welcome contributions! You can fork the repo, make changes, and submit a pull request. Refer to the **Contributing** section above for details.
+
+## Commercial Licensing and Support
+
+In addition to the open-source version, AdTestPro also offers commercial licensing and support options for businesses:
+
+1. **Commercial Licensing**: Organizations can purchase a commercial license to use AdTestPro in a production environment. This includes access to premium features, dedicated support, and a guaranteed SLA.
+
+2. **Paid Setup and Deployment**: For enterprises, AdTestPro offers a paid setup and deployment service. This includes assistance with integrating the platform into your existing marketing technology stack, as well as comprehensive training for your team.
+
+3. **Maintenance and Support**: Commercial customers also have access to ongoing maintenance and support for the AdTestPro platform. This includes bug fixes, feature updates, and dedicated support from our team of experts.
+
+To learn more about the commercial offerings and pricing, <!--please visit our [website](https://www.syntheticadtesting.com) --> contact pathakananya95@gmail.com.
 
