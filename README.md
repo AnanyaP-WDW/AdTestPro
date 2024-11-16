@@ -6,6 +6,8 @@
 
 AdTestPro is an open-source tool to gain qualitative and actionable insights from ad creatives (Meta, Google, Email). Right now AdTestPro only supports image ad's.
 
+AdTestPro is developed to help marketers test and compare their ad copies against their competitors.  Pre-emptively identify wins and losses, learn from mistakes, use competitors winning ideas, score copy, visuals and hooks. Get targeted insights and scoring based on precise user personas. Get actionable steps along with the feedback
+
 ## Features
 
 - **Target Audience Enrichment**
@@ -80,7 +82,11 @@ For commercial licensing options, please contact pathakananya95@gmail.com.
    Absolutely. You can customize your personas based on specific demographics, preferences, and behavioral traits to better fit your ad testing needs.
 
 6. **How can I contribute to the project?**  
-   We welcome contributions! You can fork the repo, make changes, and submit a pull request. Refer to the **Contributing** section above for details.
+   We welcome contributions! You can fork the repo, make changes, and submit a pull request. Refer to the **Contributing** section above for details.\
+
+7. **What is the core methodology?**
+   AdTestPro uses LLM-as-a-Personalized-Judge (WIP!), it's a technique that incorporates verbal uncertainty estimation into the LLM pipeline, this allows the model to express low confidence on uncertain judgments. For more understanding please refer to [Can LLM be a Personalized Judge?](https://arxiv.org/html/2406.11657v1)
+
 
 ## Commercial Licensing and Support
 

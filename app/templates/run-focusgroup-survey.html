@@ -16,7 +16,7 @@
 
         <div class="bg-white rounded-lg shadow p-6">
             <form hx-post="/api/analyze-ad-image" 
-                  hx-target="#results"
+                  hx-target="#analysis-results"
                   hx-indicator="#loading"
                   hx-encoding="multipart/form-data"
                   class="space-y-6">
@@ -39,6 +39,8 @@
                     </div>
                 </div>
 
+                <div id="preview-container" class="mt-6"></div>
+
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Analysis Types</label>
                     <div class="mt-2 space-y-2">
@@ -60,7 +62,13 @@
                     </div>
                 </div>
 
-                <div>
+                <div id="loading" class="htmx-indicator flex justify-center py-4">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+
+                <div id="analysis-results" class="mt-6"></div>
+
+                <div id="questions-section">
                     <label class="block text-sm font-medium text-gray-700 mb-4">Select Questions for Analysis (Max 3)</label>
                     <div id="questions-container" class="mt-2"
                          hx-get="/api/survey-questions"
@@ -69,10 +77,7 @@
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Select
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Select Questions
                                     </th>
                                 </tr>
@@ -88,15 +93,26 @@
                                 </tr>
                             </tbody>
                         </table>
-                        
+
+                        <div id="finalize-message" class="mt-2 space-y-0.5">
+                            <!-- Selected questions will be displayed here with reduced spacing -->
+                        </div>
+
                         <div class="mt-4 flex items-center justify-between">
                             <span class="text-sm text-gray-500" id="selected-count">0 of 3 questions selected</span>
-                            <button type="button" 
-                                    id="finalize-questions"
-                                    disabled
-                                    class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
-                                Finalize Questions
-                            </button>
+                            <div class="flex space-x-4">
+                                <button type="button" 
+                                        id="definalize-questions"
+                                        class="hidden inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    Edit Questions
+                                </button>
+                                <button type="button" 
+                                        id="finalize-questions"
+                                        disabled
+                                        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    Finalize Questions
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -108,17 +124,11 @@
                     </button>
                 </div>
             </form>
-
-            <div id="loading" class="htmx-indicator flex justify-center py-4">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-
-            <div id="results" class="mt-6"></div>
         </div>
     </div>
 
     <script>
-        // Preview selected image
+        // Update image preview code to use new container
         document.querySelector('input[type="file"]').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
@@ -127,7 +137,7 @@
                     const preview = document.createElement('img');
                     preview.src = e.target.result;
                     preview.className = 'mt-4 max-w-full h-auto rounded-lg';
-                    const previewContainer = document.querySelector('#results');
+                    const previewContainer = document.querySelector('#preview-container');
                     previewContainer.innerHTML = '';
                     previewContainer.appendChild(preview);
                 }
@@ -204,7 +214,7 @@
             finalizeButton.disabled = checked.length === 0;
         }
 
-        // Handle finalize button click
+        // Update finalize questions handler with reduced spacing
         document.getElementById('finalize-questions')?.addEventListener('click', function() {
             const checked = document.querySelectorAll('[name="questions"]:checked');
             if (checked.length === 0) {
@@ -217,14 +227,39 @@
                 checkbox.disabled = true;
             });
             
-            // Disable the finalize button
-            this.disabled = true;
+            // Disable the finalize button and show definalize button
+            this.classList.add('hidden');
+            document.getElementById('definalize-questions').classList.remove('hidden');
             
-            // Show confirmation message
+            // Show confirmation message with selected questions - now with reduced spacing
+            const selectedQuestions = Array.from(checked).map(cb => cb.parentElement.nextElementSibling.textContent.trim());
             const confirmationMsg = document.createElement('div');
-            confirmationMsg.className = 'mt-2 text-sm text-green-600';
-            confirmationMsg.textContent = 'Questions finalized! You can now proceed with the analysis.';
-            this.parentNode.appendChild(confirmationMsg);
+            confirmationMsg.className = 'text-sm text-green-600';
+            confirmationMsg.innerHTML = `
+                <p>Questions finalized! You can now proceed with the analysis.</p>
+                <p class="mt-1"><strong>${checked.length} questions selected:</strong></p>
+                <ul class="list-inside mt-0.5">
+                    ${selectedQuestions.map(q => `<li class="py-0.5">${q}</li>`).join('')}
+                </ul>
+            `;
+            document.getElementById('finalize-message').innerHTML = '';
+            document.getElementById('finalize-message').appendChild(confirmationMsg);
+        });
+
+        // Add definalize questions handler
+        document.getElementById('definalize-questions')?.addEventListener('click', function() {
+            // Enable all checkboxes
+            document.querySelectorAll('[name="questions"]').forEach(checkbox => {
+                checkbox.disabled = false;
+            });
+            
+            // Show finalize button and hide definalize button
+            this.classList.add('hidden');
+            document.getElementById('finalize-questions').classList.remove('hidden');
+            document.getElementById('finalize-questions').disabled = false;
+            
+            // Clear confirmation message
+            document.getElementById('finalize-message').innerHTML = '';
         });
     </script>
 </body>
