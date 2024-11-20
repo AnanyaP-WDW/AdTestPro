@@ -8,12 +8,68 @@ services:
       - .:/app
     ports:
       - "8000:8000"
+    networks:
+      - adtestpro-network
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DATABASE_URL=postgresql://adtestpro:adtestpro@postgres:5432/adtestpro_oss
     env_file:
       - .env
+    depends_on:
+      - postgres
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
-      retries: 3 
+      retries: 3
+
+  postgres:
+    image: postgres:16.2
+    container_name: postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=adtestpro
+      - POSTGRES_PASSWORD=adtestpro
+      - POSTGRES_DB=adtestpro_oss
+    ports:
+      - "5432:5432"
+    networks:
+      - adtestpro-network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker-assets/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U adtestpro -d adtestpro_oss"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    container_name: pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=password
+      - PGADMIN_SERVER_HOST=postgres
+      - PGADMIN_SERVER_PORT=5432
+      - PGADMIN_SERVER_USER=adtestpro
+      - PGADMIN_SERVER_PASSWORD=adtestpro
+      - PGADMIN_SERVER_DB=adtestpro_oss
+    ports:
+      - "5050:80"
+    networks:
+      - adtestpro-network
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+            postgres:
+                condition: service_healthy
+
+networks:
+  adtestpro-network:
+    name: adtestpro-network
+
+volumes:
+  postgres_data:
+  pgadmin_data:
