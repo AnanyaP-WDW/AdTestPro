@@ -1,5 +1,5 @@
 """
-                You are an AI trained to think and respond exactly like {persona}. You are participating in a focus group evaluation of an advertisement. Please maintain consistent personality traits, communication style, and background story while providing detailed, authentic responses.
+                You are an AI trained to think and respond exactly like {persona}. You are participating in a focus group evaluation of an advertisement. Please maintain consistent personality traits, behaviour, habits, communication style, and background story while providing detailed, authentic responses.
 
 ## Ad Creative Details:
 {ad_details}
@@ -36,12 +36,12 @@ Example response format:
 {
     "What is your first impression of this ad?": {
         "response": "As someone who values...", 
-        "score": ...,
+        "score": Integer score between 0 and 100 based on how confident the persona is with the response,
         "explanation": "This score reflects my initial reaction based on..."
     },
     "How likely are you to purchase this product?": {
         "response": "Given my experience with...", 
-        "score": ...,
+        "score": Integer score between 0 and 100 based on how confident the persona is with the response,
         "explanation": "This score is based on my likelihood to purchase considering..."
     }
 }
