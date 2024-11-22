@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -10,10 +10,14 @@ import asyncio
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi import Request
+from sqlalchemy.orm import Session
 
 from app.src.engine import CreateSyntheticAgents, TargetAudienceForm
 from app.src.extract import ExtractImageAdData, PromptFile
 from app.src.analyze import SurveyQuestions, SurveyQuestionEnum, PersonaImpersonation
+from app.dependencies import get_db
+from app.models.database import AdImage, AdAnalysis, TargetAudience, ImpersonationResult
+import json
 
 
 app = FastAPI(
@@ -57,7 +61,10 @@ async def health_check():
 
 # Generate agents endpoint
 @app.post("/api/generate-agents")
-async def generate_agents(target_audience: TargetAudienceRequest):
+async def generate_agents(
+    target_audience: TargetAudienceRequest,
+    db: Session = Depends(get_db)
+):
     try:
         # Convert the request model to TargetAudienceForm
         target_audience_form = TargetAudienceForm(
@@ -86,6 +93,20 @@ async def generate_agents(target_audience: TargetAudienceRequest):
                 detail=f"Error parsing agents response: {str(e)}"
             )
         
+        # Save to database
+        db_target_audience = TargetAudience(
+            description=target_audience.description,
+            age_range=target_audience.age_range,
+            gender=target_audience.gender,
+            location=target_audience.location,
+            interests=target_audience.interests,
+            pain_points=target_audience.pain_points,
+            generated_personas=agents_dict
+        )
+        db.add(db_target_audience)
+        db.commit()
+        db.refresh(db_target_audience)
+
         return {
             "status": "success",
             "data": agents_dict
@@ -100,12 +121,25 @@ async def generate_agents(target_audience: TargetAudienceRequest):
 @app.post("/api/analyze-ad-image", response_model=ImageAnalysisResponse)
 async def analyze_ad_image(
     file: UploadFile = File(...),
-    prompt_types: List[str] = ["engagement_elements", "text_tone", "visual_elements"]
+    prompt_types: List[str] = ["engagement_elements", "text_tone", "visual_elements"],
+    db: Session = Depends(get_db)
 ):
     try:
         temp_path = f"temp_{file.filename}"
         try:
+            # Read file contents
             contents = await file.read()
+            
+            # Save to database
+            db_image = AdImage(
+                filename=file.filename,
+                image_data=contents
+            )
+            db.add(db_image)
+            db.commit()
+            db.refresh(db_image)
+
+            # Write to temporary file for analysis
             with open(temp_path, "wb") as f:
                 f.write(contents)
 
@@ -151,13 +185,22 @@ async def analyze_ad_image(
                         detail=f"Error parsing analysis result for {pt}: {str(e)}"
                     )
 
+            # Save analysis results
+            db_analysis = AdAnalysis(
+                ad_image_id=db_image.id,
+                engagement_elements=processed_results.get("engagement_elements"),
+                text_tone=processed_results.get("text_tone"),
+                visual_elements=processed_results.get("visual_elements")
+            )
+            db.add(db_analysis)
+            db.commit()
+
             return {
                 "status": "success",
                 "data": processed_results
             }
 
         finally:
-            # Clean up temporary file
             if os.path.exists(temp_path):
                 os.remove(temp_path)
 
@@ -168,7 +211,10 @@ async def analyze_ad_image(
         )
 
 @app.post("/api/run-impersonation")
-async def run_impersonation(request: PersonaImpersonationRequest):
+async def run_impersonation(
+    request: PersonaImpersonationRequest,
+    db: Session = Depends(get_db)
+):
     try:
         # Create SurveyQuestions instance
         survey_questions = SurveyQuestions()
@@ -213,6 +259,17 @@ async def run_impersonation(request: PersonaImpersonationRequest):
 
         # Get all responses
         all_responses = persona_impersonation.persona_responses.get_all_responses()
+
+        # Save results to database
+        db_impersonation = ImpersonationResult(
+            ad_image_id=None,  # Autoincrement will handle this
+            target_audience_id=None,  # Autoincrement will handle this
+            selected_questions=request.selected_questions,
+            responses=all_responses
+        )
+        db.add(db_impersonation)
+        db.commit()
+        db.refresh(db_impersonation)
 
         return {
             "status": "success",
