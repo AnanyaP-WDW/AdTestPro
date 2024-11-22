@@ -1,30 +1,59 @@
-# AdTestPro
+# AdTestPro: AI-Powered Ad Creative Testing Platform
 
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)
 ![Python Version](https://img.shields.io/badge/python-3.11-blue.svg)
 ![GitHub last commit](https://img.shields.io/github/last-commit/AnanyaP-WDW/AdTestPro)
 
-AdTestPro is an open-source tool to gain qualitative and actionable insights from ad creatives (Meta, Google, Email). Right now AdTestPro only supports image ad's.
+AdTestPro is an open-source tool to gain qualitative and actionable insights from ad creatives, Product images and app UI. We leverage [LLM-Simulated Expert Personas] (https://arxiv.org/html/2409.12538v1) to simulate diverse personas and [personalized judges] (https://arxiv.org/html/2406.11657v1) to score the confidence and truthfullness of theses personas.
+
+Instead of traditional, time-consuming focus group sessions, marketers can quickly validate their ad concepts with AI-generated personas that represent their target audience.
+
+Right now AdTestPro only supports image ad's.
 
 AdTestPro is developed to help marketers test and compare their ad copies against their competitors.  Pre-emptively identify wins and losses, learn from mistakes, use competitors winning ideas, score copy, visuals and hooks. Get targeted insights and scoring based on precise user personas. Get actionable steps along with the feedback
 
-## Features
+## 🚀 Key Features
 
-- **Target Audience Enrichment**
-- **Ad Creative Testing**
-- **Consolidated Reporting**
-- **Customizable Personas**
-- **Scalable Testing**
+- **AI Persona Generation**: Creates detailed, demographically accurate personas based on your target audience specifications
+- **Visual Analysis**: Advanced image recognition to analyze ad elements, composition, and emotional impact
+- **Synthetic Focus Groups**: Simulates focus group discussions with AI personas providing authentic, diverse feedback
+- **Engagement Metrics**: Measures key performance indicators like brand recall, appeal scores, and purchase intent
+- **Comprehensive Reports**: Generates detailed insights and recommendations for ad optimization
+
+## 🎯 Perfect For
+
+- Marketing Teams
+- Ad Agencies
+- Brand Managers
+- Creative Directors
+- Digital Marketers
+- Marketing Analysts
+
+## 💡 Use Cases
+
+- Pre-launch ad creative validation
+- A/B testing different ad concepts
+- Understanding audience perception
+- Identifying potential cultural or messaging issues
+- Rapid iteration on ad designs
+- Competitor ad creative analysis
+
+## 📈 Benefits
+
+- Reduce testing costs by 90%
+- Get feedback in minutes instead of weeks
+- Test multiple variations simultaneously
+- Eliminate geographical and logistical constraints
+- Maintain complete privacy of pre-launch campaigns
+- Ideate ad concepts quickly
 
 ## Overview
 
-AdTestPro is a tool that helps marketers and advertisers validate their ad concepts and creatives before launch. The key features include:
+1. **Target Audience Enrichment**: Users can enter their target audience details. These deatails are used to create [LLM-Simulated Expert Personas] (https://arxiv.org/html/2409.12538v1).
 
-1. **Target Audience Enrichment**: Users can enter their target audience details, which are then enriched by AI to create 3 varied personas that fit the specified criteria.
+2. **Ad Creative Information Extraction**: The ad creative is analysed to extract critical information needed for qualitative testing ex: tone, visual hierarchies, OCR, branding, demographic indicators, design ,font ,ad dimensions, procilivity towards social media networks etc.
 
-2. **Ad Creative Information Extraction**: User input ad creative is analysed to extract critical information needed for qualitative testing ex: tone, visual hierarchies, OCR, branding, demographic indicators, design ,font ,ad dimensions, procilivity towards social media networks etc.
-
-3. **Synthetic Persona Focus Groups**: The generated personas participate in a focus group to provide feedback on the ad creatives. Each persona is shown the ad along with relevant information extracted by an ad/marketing expert.
+3. **Synthetic Persona Focus Groups**: The generated personas participate in a [focus group survey] (https://studentaffairs.jhu.edu/viceprovost/assessment-analysis/assessment-tools-methods/focus-groups/) to provide feedback on the ad creatives. Each persona is shown the ad along with relevant information extracted by an ad/marketing expert. Each persona's confidence and truthfullness are scored. 
 
 4. **Consolidated Feedback**: The responses and feedback from the synthetic personas are collected, analyzed, and presented to the user in an easy-to-understand format.
 
