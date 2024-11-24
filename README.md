@@ -1,5 +1,8 @@
 # AdTestPro: AI-Powered Ad Creative Testing Platform
 
+⚠️ **WORK IN PROGRESS - NOT PRODUCTION READY** ⚠️
+> **Warning**: This project is under active development and is not yet suitable for production use. APIs, features, and documentation may change significantly. Use at your own risk.
+
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)
 ![Python Version](https://img.shields.io/badge/python-3.11-blue.svg)
 ![GitHub last commit](https://img.shields.io/github/last-commit/AnanyaP-WDW/AdTestPro)
