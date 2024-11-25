@@ -16,7 +16,7 @@ class AdImage(Base):
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     filename = Column(String)
     image_data = Column(LargeBinary)
-    created_at = Column(DateTime, default=datetime.UTC)
+    created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
     analysis = relationship("AdAnalysis", back_populates="ad_image", uselist=False)
@@ -30,7 +30,7 @@ class AdAnalysis(Base):
     engagement_elements = Column(JSON)
     text_tone = Column(JSON)
     visual_elements = Column(JSON)
-    created_at = Column(DateTime, default=datetime.UTC)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationship
     ad_image = relationship("AdImage", back_populates="analysis")
@@ -46,7 +46,7 @@ class TargetAudience(Base):
     interests = Column(JSON)
     pain_points = Column(JSON)
     generated_personas = Column(JSON)
-    created_at = Column(DateTime, default=datetime.UTC)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationship
     impersonation_results = relationship("ImpersonationResult", back_populates="target_audience")
@@ -59,7 +59,7 @@ class ImpersonationResult(Base):
     target_audience_id = Column(Integer, ForeignKey("target_audiences.id"))
     selected_questions = Column(JSON)
     responses = Column(JSON)
-    created_at = Column(DateTime, default=datetime.UTC)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     ad_image = relationship("AdImage", back_populates="impersonation_results")
