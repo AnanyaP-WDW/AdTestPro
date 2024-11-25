@@ -1,0 +1,19 @@
+<tr>
+    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ item.description }}</td>
+    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+        {{ item.age_range }} / {{ item.gender }} / {{ item.location }}
+    </td>
+    <td class="px-3 py-4 text-sm text-gray-500">{{ item.interests }}</td>
+    <td class="px-3 py-4 text-sm text-gray-500">{{ item.pain_points }}</td>
+    <td class="px-3 py-4 text-sm text-gray-500">
+        <button 
+            hx-get="/api/agents/{{ item.id }}/personas"
+            hx-target="#persona-details-{{ item.id }}"
+            hx-swap="outerHTML"
+            class="text-blue-600 hover:text-blue-900">
+            View Details
+        </button>
+        <div id="persona-details-{{ item.id }}" class="mt-2"></div>
+    </td>
+    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ item.created_at }}</td>
+</tr> 

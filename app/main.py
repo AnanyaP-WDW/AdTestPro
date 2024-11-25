@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -43,8 +43,8 @@ class TargetAudienceRequest(BaseModel):
     age_range: str
     gender: str
     location: str
-    interests: List[str]
-    pain_points: List[str]
+    interests: str
+    pain_points: str
 
 class ImageAnalysisResponse(BaseModel):
     status: str
@@ -62,18 +62,37 @@ async def health_check():
 # Generate agents endpoint
 @app.post("/api/generate-agents")
 async def generate_agents(
-    target_audience: TargetAudienceRequest,
+    description: str = Form(...),
+    age_range: str = Form(...),
+    gender: str = Form(...),
+    location: str = Form(...),
+    interests: str = Form(...),
+    pain_points: str = Form(...),
     db: Session = Depends(get_db)
 ):
     try:
+        # Convert form data to TargetAudienceRequest
+        target_audience = TargetAudienceRequest(
+            description=description,
+            age_range=age_range,
+            gender=gender,
+            location=location,
+            interests=interests,
+            pain_points=pain_points
+        )
+
+        # converting the interests and pain points to lists of strings
+        interests_list = [i.strip() for i in target_audience.interests.split(',')]
+        pain_points_list = [p.strip() for p in target_audience.pain_points.split(',')]
+
         # Convert the request model to TargetAudienceForm
         target_audience_form = TargetAudienceForm(
             description=target_audience.description,
             age_range=target_audience.age_range,
             gender=target_audience.gender,
             location=target_audience.location,
-            interests=target_audience.interests,
-            pain_points=target_audience.pain_points
+            interests=interests_list,
+            pain_points=pain_points_list
         )
 
         # Initialize the synthetic agents creator
@@ -105,11 +124,12 @@ async def generate_agents(
         )
         db.add(db_target_audience)
         db.commit()
+        # The refresh method reloads the instance from the database, ensuring it has the most up-to-date data.
         db.refresh(db_target_audience)
 
         return {
             "status": "success",
-            "data": agents_dict
+            "message": "Target Audience Personas generated successfully!"
         }
     
     except Exception as e:
@@ -355,6 +375,55 @@ async def get_survey_questions(request: Request):
         {"request": request, 
          "questions": survey_questions.question_map }
     )
+
+@app.get("/view-personas")
+async def view_personas(request: Request):
+    return templates.TemplateResponse("view_personas.html", {"request": request})
+
+@app.get("/api/agents")
+async def get_agents(request: Request, db: Session = Depends(get_db)):
+    try:
+        target_audiences = db.query(TargetAudience).all()
+        formatted_data = []
+        for ta in target_audiences:
+            formatted_data.append({
+                "id": ta.id,
+                "description": ta.description,
+                "age_range": ta.age_range,
+                "gender": ta.gender,
+                "location": ta.location,
+                "interests": ta.interests,
+                "pain_points": ta.pain_points,
+                "generated_personas": ta.generated_personas,
+                "created_at": ta.created_at.isoformat() if ta.created_at else None
+            })
+        
+        return templates.TemplateResponse(
+            "partials/personas_table.html",
+            {"request": request, "data": formatted_data}
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching agents: {str(e)}"
+        )
+
+@app.get("/api/agents/{target_audience_id}/personas")
+async def get_agent_personas(target_audience_id: int, db: Session = Depends(get_db)):
+    try:
+        target_audience = db.query(TargetAudience).filter(TargetAudience.id == target_audience_id).first()
+        if not target_audience:
+            raise HTTPException(status_code=404, detail="Target audience not found")
+            
+        return {
+            "status": "success",
+            "data": target_audience.generated_personas
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching personas: {str(e)}"
+        )
 
 if __name__ == "__main__":
     import uvicorn

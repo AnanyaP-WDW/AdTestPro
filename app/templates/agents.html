@@ -10,16 +10,17 @@
 <body class="bg-gray-100">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div class="flex items-center justify-between mb-8">
-            <h1 class="text-3xl font-bold text-gray-900">Generate Synthetic Focus Group</h1>
+            <h1 class="text-3xl font-bold text-gray-900">Create Target Audience Personas</h1>
             <a href="/" class="text-blue-600 hover:text-blue-800">Back to Home</a>
         </div>
 
         <div class="bg-white rounded-lg shadow p-6">
             <form hx-post="/api/generate-agents" 
                   hx-target="#results" 
+                  hx-swap="outerHTML"
                   hx-indicator="#loading"
-                  hx-encoding="multipart/form-data"
-                  class="space-y-6">
+                  class="space-y-6"
+                  enctype="multipart/form-data">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Description</label>
                     <textarea name="description" required
@@ -66,25 +67,33 @@
                 </div>
             </form>
 
-            <div id="loading" class="htmx-indicator flex justify-center py-4">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div id="loading" class="htmx-indicator">
+                <div class="flex justify-center items-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    <span class="ml-2">Generating agents...</span>
+                </div>
             </div>
 
             <div id="results" class="mt-6">
-                <!-- Results will be displayed here -->
+                <!-- Results will be inserted here by HTMX -->
+            </div>
+
+            <div class="mt-8">
+                <a href="/view-personas"
+                   class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"></a>
+                    View Generated Personas
+                </a>
             </div>
         </div>
     </div>
 
-    <script>
-        document.addEventListener('htmx:afterRequest', function(evt) {
-            if (evt.detail.successful && evt.detail.target.id === 'results') {
-                const response = JSON.parse(evt.detail.xhr.response);
-                if (response.status === 'success') {
-                    window.generatedAgents = response.data;
-                }
-            }
-        });
-    </script>
+    <style>
+        .htmx-indicator {
+            display: none;
+        }
+        .htmx-request .htmx-indicator {
+            display: flex;
+        }
+    </style>
 </body>
 </html> 

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Generated Personas</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex items-center justify-between mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">Generated Personas</h1>
+            <a href="/generate-participants" class="text-blue-600 hover:text-blue-800">Back to Generator</a>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div id="personas-container"
+                 hx-get="/api/agents"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <!-- Personas table will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .htmx-indicator {
+            display: none;
+        }
+        .htmx-request .htmx-indicator {
+            display: flex;
+        }
+    </style>
+</body>
+</html> 

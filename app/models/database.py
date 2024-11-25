@@ -43,8 +43,8 @@ class TargetAudience(Base):
     age_range = Column(String)
     gender = Column(String)
     location = Column(String)
-    interests = Column(JSON)
-    pain_points = Column(JSON)
+    interests = Column(String)
+    pain_points = Column(String)
     generated_personas = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
 
