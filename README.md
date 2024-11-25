@@ -23,6 +23,22 @@ AdTestPro is developed to help marketers test and compare their ad copies agains
 - **Engagement Metrics**: Measures key performance indicators like brand recall, appeal scores, and purchase intent
 - **Comprehensive Reports**: Generates detailed insights and recommendations for ad optimization
 
+## 🎯️ App Screenshots
+
+<div align="center">
+  <img src="assets/app_view1.png" alt="AdTestPro Home" width="600"/>
+  <p><em>AdTestPro Dashboard - Home page</em></p>
+  
+  <img src="assets/app_view2.png" alt="Persona Generation" width="600"/>
+  <p><em>Persona Generation Interface</em></p>
+  
+  <img src="assets/app_view3.png" alt="Upload Ad Creative" width="600"/>
+  <p><em>Uploading Ad Creative</em></p>
+
+  <img src="assets/app_view4.png" alt="Choose Questions and Run Survey" width="600"/>
+  <p><em>Choose Questions and Run Survey</em></p>
+</div>
+
 ## 🎯 Perfect For
 
 - Marketing Teams
