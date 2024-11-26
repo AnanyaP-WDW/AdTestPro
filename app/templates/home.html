@@ -1,5 +1,5 @@
 <!-- Dashboard Content -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
     <!-- Generate Synthetic Participants Card -->
     <div class="bg-white overflow-hidden shadow rounded-lg">
         <div class="p-6 h-full flex flex-col">
@@ -41,6 +41,24 @@
                     hx-push-url="true">
                     Start Analysis
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Generated Personas Card -->
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-6 h-full flex flex-col">
+            <div class="flex-grow">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">View Generated Personas</h3>
+                <p class="text-sm text-gray-500 mb-8">
+                    Review and analyze all previously generated target audience personas and their detailed characteristics.
+                </p>
+            </div>
+            <div class="mt-auto">
+                <a href="/view-personas"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                    View Personas
+                </a>
             </div>
         </div>
     </div>
