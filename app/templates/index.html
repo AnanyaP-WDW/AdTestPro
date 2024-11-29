@@ -48,6 +48,16 @@
                         </button>
                         <button 
                             class="nav-link inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            hx-get="/view-personas"
+                            hx-target="#main-content"
+                            hx-push-url="true"
+                            hx-trigger="click"
+                            _="on click add .border-blue-500 to me remove .border-transparent from me
+                                remove .border-blue-500 from .nav-link add .border-transparent to .nav-link">
+                            View Generated Personas
+                        </button>   
+                        <button 
+                            class="nav-link inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
                             hx-get="/run-focusgroup-survey"
                             hx-target="#main-content"
                             hx-push-url="true"
