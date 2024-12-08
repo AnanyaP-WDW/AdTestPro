@@ -148,3 +148,15 @@ In addition to the open-source version, AdTestPro also offers commercial licensi
 
 To learn more about the commercial offerings and pricing, <!--please visit our [website](https://www.syntheticadtesting.com) --> contact pathakananya95@gmail.com.
 
+## TODO
+
+1. on view generated personas page add a view details subpage
+2. on run focus group survey page somethimes the finalize question button doesnt render the seletced questions
+3. nav tab highlight doesnt work poperly - ex: when generte personas page is open the nav tab still highlights home
+4. on generate personas page when view peronsas button is hit - it redirects to the correct page but without the header nav tabs
+5. There is no way to select the personas on the run focus group survey page
+6. The form on the run focus group page doesn't look congrous
+7. Some api routes fail unexpectedly
+8. Add results -> best way to show results along with persona confidence and tuthfullness score
+9. for scalabaility adding celery to queue results -> redis broker and results queue
+
