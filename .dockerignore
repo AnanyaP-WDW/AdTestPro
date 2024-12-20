@@ -1,61 +1,13 @@
-# Version control
 .git
 .gitignore
-.gitattributes
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-*.egg-info/
-*.egg
-.eggs/
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.nox/
-
-# Virtual environments
-venv/
-.venv/
-env/
-ENV/
-
-# IDE specific files
-.idea/
-.vscode/
-*.swp
-*.swo
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-
-# Project specific
-docs/
-tests/
-*.md
-!README.md
-!examples.md
 .env
-.env.*
-docker-compose*.yml
-
-# Cache and temp files
-*.log
-*.pot
-*.pyc
-.cache/
-.mypy_cache/
-.dmypy.json
-dmypy.json
-.pyre/
-.pytype/
-
-# Build directories
-build/
-dist/
+*.md
+node_modules
+npm-debug.log
+Dockerfile*
+docker-compose*
+.dockerignore
+.DS_Store
+.next
+build
+.env* 
