@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdTestPro - Ad Creative Testing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {"50":"#f0f9ff","100":"#e0f2fe","200":"#bae6fd","300":"#7dd3fc","400":"#38bdf8","500":"#0ea5e9","600":"#0284c7","700":"#0369a1","800":"#075985","900":"#0c4a6e","950":"#082f49"}
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-8 md:p-16">
+    <div class="container mx-auto max-w-3xl">
+        <h1 class="text-4xl font-bold mb-12 text-center text-primary-300">AdTestPro</h1>
+        <form class="space-y-8">
+            <div class="space-y-4">
+                <label for="description" class="block text-sm font-medium text-gray-300">Description</label>
+                <textarea id="description" rows="4" class="w-full p-4 text-sm rounded-lg bg-gray-800 border-gray-700 placeholder-gray-400 text-white focus:ring-primary-500 focus:border-primary-500" placeholder="Describe your ad concept..."></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="space-y-4">
+                    <label for="age-range" class="block text-sm font-medium text-gray-300">Age Range</label>
+                    <input type="text" id="age-range" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-4" placeholder="e.g., 25-40">
+                </div>
+                <div class="space-y-4">
+                    <label for="location" class="block text-sm font-medium text-gray-300">Location</label>
+                    <input type="text" id="location" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-4" placeholder="e.g., New York, USA">
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <label for="interests" class="block text-sm font-medium text-gray-300">Interests</label>
+                <input type="text" id="interests" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-4" placeholder="e.g., Technology, Sports, Fashion">
+            </div>
+
+            <div class="space-y-4">
+                <label for="pain-points" class="block text-sm font-medium text-gray-300">Pain Points</label>
+                <input type="text" id="pain-points" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-4" placeholder="e.g., Time management, Budget constraints">
+            </div>
+
+            <div class="space-y-4">
+                <label class="block text-sm font-medium text-gray-300" for="ad-image">Upload Ad Concept Image</label>
+                <div class="flex items-center justify-center w-full">
+                    <label for="ad-image" class="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-800 hover:bg-gray-700">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                            <svg class="w-8 h-8 mb-4 text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
+                            </svg>
+                            <p class="mb-2 text-sm text-gray-400"><span class="font-semibold">Click to upload</span> or drag and drop</p>
+                            <p class="text-xs text-gray-400">PNG or JPG (MAX. 15MB)</p>
+                        </div>
+                        <input id="ad-image" type="file" class="hidden" accept="image/png, image/jpeg" onchange="previewImage(event)" />
+                    </label>
+                </div>
+                <p class="mt-2 text-sm text-gray-400" id="file-info"></p>
+                <div id="image-preview" class="mt-4 hidden">
+                    <img id="preview" class="max-w-full h-auto rounded-lg" alt="Ad concept preview">
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <label class="block text-sm font-medium text-gray-300">Questions for Synthetic Audiences (Select up to 3)</label>
+                <div class="space-y-4">
+                    <label class="flex items-center space-x-3">
+                        <input type="checkbox" class="form-checkbox bg-gray-800 border-gray-600 text-primary-500 focus:ring-primary-500" name="questions" value="q1">
+                        <span class="text-sm text-gray-300">How appealing is this ad to you?</span>
+                    </label>
+                    <label class="flex items-center space-x-3">
+                        <input type="checkbox" class="form-checkbox bg-gray-800 border-gray-600 text-primary-500 focus:ring-primary-500" name="questions" value="q2">
+                        <span class="text-sm text-gray-300">Does this ad address your needs or pain points?</span>
+                    </label>
+                    <label class="flex items-center space-x-3">
+                        <input type="checkbox" class="form-checkbox bg-gray-800 border-gray-600 text-primary-500 focus:ring-primary-500" name="questions" value="q3">
+                        <span class="text-sm text-gray-300">How likely are you to engage with this ad?</span>
+                    </label>
+                    <label class="flex items-center space-x-3">
+                        <input type="checkbox" class="form-checkbox bg-gray-800 border-gray-600 text-primary-500 focus:ring-primary-500" name="questions" value="q4">
+                        <span class="text-sm text-gray-300">What emotions does this ad evoke?</span>
+                    </label>
+                    <label class="flex items-center space-x-3">
+                        <input type="checkbox" class="form-checkbox bg-gray-800 border-gray-600 text-primary-500 focus:ring-primary-500" name="questions" value="q5">
+                        <span class="text-sm text-gray-300">How well does this ad align with your interests?</span>
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full text-white bg-primary-600 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-800 font-medium rounded-lg text-sm px-5 py-4 text-center transition duration-150 ease-in-out">Submit for Testing</button>
+        </form>
+    </div>
+
+    <script>
+        function previewImage(event) {
+            const file = event.target.files[0];
+            const fileInfo = document.getElementById('file-info');
+            const imagePreview = document.getElementById('image-preview');
+            const preview = document.getElementById('preview');
+
+            if (file) {
+                if (file.type !== "image/png" && file.type !== "image/jpeg") {
+                    fileInfo.textContent = "Please select a PNG or JPG file.";
+                    imagePreview.classList.add('hidden');
+                    return;
+                }
+
+                if (file.size > 15 * 1024 * 1024) {
+                    fileInfo.textContent = "File size exceeds 15MB. Please choose a smaller file.";
+                    imagePreview.classList.add('hidden');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    imagePreview.classList.remove('hidden');
+                    fileInfo.textContent = `File: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"][name="questions"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const checkedBoxes = document.querySelectorAll('input[type="checkbox"][name="questions"]:checked');
+                    if (checkedBoxes.length > 3) {
+                        this.checked = false;
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+
