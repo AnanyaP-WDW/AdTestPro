@@ -1,23 +1,26 @@
 version: '3.8'
 
 services:
-  backend:
-    build: ./backend
+  web:
+    container_name: adtestpro
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
     ports:
       - "8000:8000"
-    volumes:
-      - ./backend:/app
     environment:
+      - PYTHONUNBUFFERED=1
       - ENVIRONMENT=development
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - adtestpro-network
 
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-    environment:
-      - NODE_ENV=development
-    depends_on:
-      - backend 
+networks:
+  adtestpro-network:
+    name: adtestpro-network
