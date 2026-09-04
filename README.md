@@ -58,6 +58,16 @@ ADTESTPRO_MODEL=openai/gpt-4o-mini   # must be vision-capable
 `GET /ready` reports `{"ready": true}` when configured; `GET /health` is the offline
 liveness probe. ~$0.05–0.15 per 12-persona × 3-question run.
 
+## UI conventions
+
+Light, dense operator UI (`app/templates/`): shared `layout.html` (header, breadcrumb,
+readiness badge, footer disclaimer); two-column brief form with optional targeting in a
+collapsed `<details>` and a sticky action bar; results ordered Scores → Themes →
+Extraction → Personas → Provenance. Every score shows scale + n + dispersion;
+disagreement is badged, never averaged away; minority themes auto-surface; `unknown`
+renders as a chip, never blank. Rendered snapshots: `assets/*.snapshot.html`
+(screenshots blocked: no browser engine in this environment).
+
 ## Docs & rigor
 
 - `benchmarks/README.md` — PersonaBench / AdExtract-60 / AdScore-24 protocols, gate
