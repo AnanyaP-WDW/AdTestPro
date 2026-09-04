@@ -1,50 +1,90 @@
-# AdTestPro — produces schema-valid, evidence-linked ad evaluations
+# AdTestPro — Synthetic Focus Groups for Ad Creatives
 
-Experimental creative-screening signal. Not a replacement for human research.
-No CTR, sales, or causal-lift claims (release label per `PLAN.md` Task V3:
-engineering gate only; higher claims require benchmark evidence).
+Upload an ad. Get a coverage panel of 12 AI respondents, structured extraction of what's
+actually in the creative, dimension scores with disagreement flags, and evidence-linked
+recommendations — in about a minute, for cents per run.
 
-## Local startup (one command)
+> **Honest label:** produces schema-valid, evidence-linked ad evaluations. This is an
+> experimental creative-screening signal — not a replacement for human research, and it
+> makes no CTR, sales, or causal-lift claims.
+
+## Why it exists
+
+Human panels are slow and expensive; gut-feel creative review is fast but uncalibrated.
+AdTestPro sits between: a **bounded, auditable pipeline** where LLMs produce
+evidence-grounded judgments and **Python computes every number**. The model never writes
+a final score.
+
+```text
+Brief → 12 constrained personas → 1 multimodal extraction → independent answers
+      → deterministic aggregates → theme synthesis → evidence critic → result
+```
+
+## What you get per run
+
+- **Coverage panel, not fake people** — 12 personas spanning your pain points, interests,
+  familiarity, price sensitivity, and skeptical→receptive stance, each tracing every fact
+  to your brief (`supplied`) vs. inference (`hypothesis + basis`). No names, no
+  backstories, no sensitive attributes.
+- **Observation vs. interpretation split** — visible text (exact), brand, claims, CTA with
+  evidence quotes and image regions, kept separate from tone/symbolism/persuasion reads.
+  Missing logo, price, or CTA stays `unknown` — never invented.
+- **Stable 1–5 rubrics** — attention, clarity, relevance, credibility, action intent, each
+  with behavioral anchors. Disagreement widens the range instead of averaging it away,
+  and minority views survive synthesis by construction.
+- **Receipts** — every run records model ID, prompt hashes, token use, latency, repairs,
+  warnings, and code revision. Cached replay is bit-for-bit deterministic.
+
+## Quickstart
 
 ```bash
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-cp .env.sample .env   # fill in OPENAI_API_KEY
+cp .env.sample .env   # add your key (OpenAI, or OpenRouter, see below)
 uvicorn app.main:app --reload
 ```
 
-Health: `GET /health` → `200 {"status": "healthy"}` (works offline).
-Readiness: `GET /ready` → `{"ready": true|false}` (false with missing config names, no secrets printed).
+Open `http://localhost:8000/`, fill the brief, upload a PNG/JPEG (≤15MB), pick up to 3
+questions, submit. JSON API at `POST /api/evaluations`; contracts in `/openapi.json`.
 
-## Tests
-
-```bash
-pytest -q
-```
-
-Offline: fixtures run the full pipeline with a fake LLM client (no network).
-Live LLM calls require `OPENAI_API_KEY` + `ADTESTPRO_MODEL`.
-
-## Docker (case-sensitive Linux safe)
+**OpenRouter:**
 
 ```bash
-docker compose up --build
-curl -f http://localhost:8000/health
+OPENAI_API_KEY=sk-or-v1-your-key
+ADTESTPRO_BASE_URL=https://openrouter.ai/api/v1
+ADTESTPRO_MODEL=openai/gpt-4o-mini   # must be vision-capable
 ```
 
-## Cost estimate (12 personas × 3 questions)
+`GET /ready` reports `{"ready": true}` when configured; `GET /health` is the offline
+liveness probe. ~$0.05–0.15 per 12-persona × 3-question run.
 
-Rough order of magnitude with the default screening model (~$0.001 / 1k blended tokens):
+## Docs & rigor
 
-| Stage | Calls | ≈ tokens |
-|---|---|---|
-| personas (+consistency) | 2 | ~8k in / ~8k out |
-| extraction | 1 | image + ~2k out |
-| responses | 12 | ~12×2k in / ~12×0.6k out |
-| synthesize + critic | 2 | ~10k in / ~2k out |
-| **Total** | **~17** | **~$0.05–0.15 / run** |
+- `benchmarks/README.md` — PersonaBench / AdExtract-60 / AdScore-24 protocols, gate
+  thresholds, and what's blocked on human data
+- `benchmarks/evaluate.py` — metrics + deterministic replay (`replay-cached`, `replay-fresh`)
+- 49 offline tests (`pytest tests/`) run the full pipeline on fixtures with zero network
 
-Per-run budget enforced via `ADTESTPRO_PIPELINE_TIMEOUT_S` (default 300s),
-`ADTESTPRO_MAX_CONCURRENCY` (default 4), `ADTESTPRO_TIMEOUT_S` per call,
-max 3 questions, max 12 personas, and capped `max_tokens` per stage.
-Logs carry eval id / stage / duration / tokens / cost only — never image bytes, keys, or profiles.
+## Research grounding
+
+Academic (most-cited first):
+
+1. Generative Agents (Park et al., Stanford/Google, UIST'23) — 25-agent society — https://arxiv.org/abs/2304.03442
+2. Out of One, Many / Silicon Samples (Argyle et al., 2022/23) — template for persona conditioning — https://arxiv.org/abs/2209.06899
+3. Automatic Understanding of Image/Video Ads (Hussain et al., CVPR'17) — Pitt Ads 64k benchmark — https://people.cs.pitt.edu/~kovashka/ads/
+4. Generative Agent Simulations of 1,000 People (Stanford, 2024) — https://arxiv.org/abs/2411.10109
+5. Persuasion Strategies in Ads (AAAI'23) — https://doi.org/10.1609/aaai.v37i1.25076
+6. Focus Agent: LLM Virtual Focus Group (2024) — https://arxiv.org/html/2409.01907
+7. ADVI-SOR (ACL Industry'26) — https://aclanthology.org/2026.acl-industry.28.pdf
+8. TRADE (ACL'24) — https://aclanthology.org/2024.acl-short.77.pdf
+
+Industry / popular:
+
+9. Microsoft TinyTroupe — https://github.com/microsoft/TinyTroupe
+10. I Asked 100 AI Agents to Judge an Ad (Every.to, 2025) — https://every.to/also-true-for-humans/how-i-made-ai-think-like-a-focus-group
+11. Evidenza / Toluna Instant / SyntheticUsers + FishDog — https://www.evidenza.ai/ , https://tolunacorporate.com/our-solutions/creative-and-campaigns/creative-pretest-instant/ , https://fish.dog/product-releases/introducing-screening-room-test-ads-content-and-films-with-a-synthetic-audience
+12. your-ai-focus-group (OSS near-clone) — https://github.com/shagghiesuperstar/your-ai-focus-group
+
+## License
+
+See `LICENSE`.
