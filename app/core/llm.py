@@ -67,7 +67,9 @@ def shared_client() -> Any:
             raise LLMConfigError("OPENAI_API_KEY is not set")
         from openai import AsyncOpenAI
 
-        _client = AsyncOpenAI(api_key=api_key, timeout=_timeout_s())
+        # ponytail: OpenAI-compatible endpoints (e.g. OpenRouter) need only a base URL + key.
+        base_url = os.getenv("ADTESTPRO_BASE_URL", "").strip() or None
+        _client = AsyncOpenAI(api_key=api_key, timeout=_timeout_s(), base_url=base_url)
     return _client
 
 

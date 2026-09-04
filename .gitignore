@@ -133,3 +133,7 @@ dmypy.json
 
 # Databases
 *db.json
+
+# Local-only working files
+PLAN.md
+start.md
