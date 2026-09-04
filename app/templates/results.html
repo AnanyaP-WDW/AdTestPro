@@ -1,93 +1,139 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AdTestPro - Results</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-900 text-gray-100 min-h-screen p-8 md:p-16">
-<div class="container mx-auto max-w-4xl space-y-10">
-    <h1 class="text-3xl font-bold text-center text-sky-300">Evaluation Results</h1>
-
-    {% if error %}
-    <div role="alert" class="p-6 rounded-lg bg-red-900/40 border border-red-700">
-        <p class="font-medium">Something went wrong</p>
-        <p class="text-sm text-gray-300">{{ error }}</p>
-        <a href="/" class="underline text-sm">Back to form</a>
-    </div>
-    {% elif result %}
-    <div class="p-4 rounded-lg border {{ 'border-amber-600 bg-amber-900/30' if result.status != 'complete' else 'border-gray-700 bg-gray-800' }}">
-        <p class="text-sm"><strong>Status:</strong> {{ result.status }} · <strong>Scale:</strong> 1–5 · <strong>Sample:</strong> {{ result.scores.valid_responses }} valid / {{ result.scores.missing_responses }} missing</p>
-        {% if result.trace.warnings %}
-        <ul class="mt-2 text-sm text-amber-200 list-disc pl-5">
-            {% for w in result.trace.warnings %}<li>{{ w }}</li>{% endfor %}
-        </ul>
-        {% endif %}
-    </div>
-
-    <section>
-        <h2 class="text-xl font-semibold mb-3">Audience constraints</h2>
-        <p class="text-sm text-gray-300">{{ result.brief.product_description }} · {{ result.brief.campaign_objective }} · ages {{ result.brief.age_min }}–{{ result.brief.age_max }} · {{ result.brief.location }}</p>
-        <p class="text-sm text-gray-400">Coverage panel (not a representative sample). Supplied facts are listed per persona.</p>
-    </section>
-
-    <section>
-        <h2 class="text-xl font-semibold mb-3">Coverage personas ({{ result.personas.personas|length }})</h2>
-        <ul class="grid md:grid-cols-2 gap-4">
-        {% for p in result.personas.personas %}
-            <li class="p-4 rounded-lg bg-gray-800 text-sm">
-                <p class="font-medium">{{ p.id }} · {{ p.segment }} ({{ p.stance }})</p>
-                <p class="text-gray-400">needs: {{ p.needs|join(', ') }} · familiarity: {{ p.category_familiarity }}</p>
-                <p class="text-gray-500">supplied: {{ p.supplied_facts|join('; ') }}</p>
-            </li>
-        {% endfor %}
-        </ul>
-    </section>
-
-    <section>
-        <h2 class="text-xl font-semibold mb-3">Structured extraction</h2>
-        <ul class="space-y-2 text-sm">
-        {% for o in result.extraction.observations %}
-            <li class="p-3 rounded bg-gray-800"><strong>{{ o.field }}</strong>: {{ o.value if o.value is not none else 'unknown' }}{% if o.evidence_quote %} <span class="text-gray-400">“{{ o.evidence_quote }}”</span>{% endif %}</li>
-        {% endfor %}
-        </ul>
-    </section>
-
-    <section>
-        <h2 class="text-xl font-semibold mb-3">Dimension scores (1–5, n={{ result.scores.valid_responses }})</h2>
-        <ul class="space-y-2 text-sm">
-        {% for q in result.scores.per_question %}
-            <li class="p-3 rounded bg-gray-800"><strong>{{ q.question_id }}</strong>: mean {{ '%.2f'|format(q.mean) if q.mean is not none else '—' }} · median {{ q.median }} · sd {{ '%.2f'|format(q.stdev) if q.stdev is not none else '—' }} · n={{ q.count }}{% if q.disagreement %} <span class="text-amber-300">high disagreement — range widened</span>{% endif %}</li>
-        {% endfor %}
-        </ul>
-        {% if result.scores.overall_mean is not none %}<p class="text-sm mt-2">Overall (unweighted mean): <strong>{{ '%.2f'|format(result.scores.overall_mean) }}</strong> — synthetic-panel dispersion, not a population confidence interval.</p>{% endif %}
-    </section>
-
-    <section>
-        <h2 class="text-xl font-semibold mb-3">Themes</h2>
-        {% if result.themes %}
-        <ul class="space-y-2 text-sm">
-        {% for t in result.themes %}
-            <li class="p-3 rounded bg-gray-800"><strong>[{{ t.sentiment }}] {{ t.title }}</strong> — {{ t.summary }}</li>
-        {% endfor %}
-        </ul>
-        {% else %}<p class="text-sm text-gray-400">No themes (empty or partial run).</p>{% endif %}
-    </section>
-
-    <section>
-        <h2 class="text-xl font-semibold mb-3">Evidence-linked recommendations</h2>
-        {% if result.recommendations %}
-        <ul class="list-disc pl-5 text-sm space-y-1">{% for r in result.recommendations %}<li>{{ r }}</li>{% endfor %}</ul>
-        {% else %}<p class="text-sm text-gray-400">None.</p>{% endif %}
-    </section>
-
-    <footer class="text-xs text-gray-500 border-t border-gray-700 pt-4">
-        Experimental creative-screening signal only — not a replacement for human research. No CTR, sales, or causal-lift claims.
-        {% if result.uncertainty %}<ul class="list-disc pl-5 mt-1">{% for u in result.uncertainty %}<li>{{ u }}</li>{% endfor %}</ul>{% endif %}
-    </footer>
-    {% endif %}
-    <p class="text-center"><a href="/" class="underline text-sm">Evaluate another ad</a></p>
+{% extends "layout.html" %}
+{% block title %}AdTestPro — Results{% endblock %}
+{% block breadcrumb %}<a href="/" class="underline">New evaluation</a> / Results{% endblock %}
+{% block content %}
+{% if error %}
+<div role="alert" class="bg-red-50 border border-red-300 rounded-lg p-4">
+    <p class="font-semibold text-red-700">Something went wrong</p>
+    <p class="text-slate-600 dark:text-slate-300">{{ error }}</p>
+    {% if form_values is defined and form_values %}
+    <form method="post" action="/evaluate" enctype="multipart/form-data" class="mt-3">
+        {% for k, v in form_values.items() %}{% if v %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+        <p class="text-[12px] text-slate-500 dark:text-slate-400 mb-2">Your brief was preserved — re-attach the image and
+        <button type="button" onclick="history.back()" class="underline text-sky-700 dark:text-sky-300 min-h-[36px]">go back to retry</button>.</p>
+    </form>
+    {% else %}<a href="/" class="underline text-sky-700 dark:text-sky-300">Back to form</a>{% endif %}
 </div>
-</body>
-</html>
+{% elif result %}
+{# Status strip #}
+<div class="bg-white dark:bg-slate-800 border rounded-lg px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1 {{ 'border-amber-300 bg-amber-50' if result.status != 'complete' else 'border-slate-200 dark:border-slate-700' }}" role="status">
+    <span class="text-[12px] font-semibold px-2 py-1 rounded-full border {{ 'text-amber-700 bg-white dark:bg-slate-800 border-amber-300' if result.status != 'complete' else 'text-emerald-700 bg-emerald-50 border-emerald-300' }}">{{ result.status }}</span>
+    <span>Scale: <strong>1–5</strong></span>
+    <span>Sample: <strong>{{ result.scores.valid_responses }}</strong> valid / {{ result.scores.missing_responses }} missing</span>
+    {% if result.scores.overall_mean is not none %}<span>Overall (unweighted mean): <strong>{{ '%.2f'|format(result.scores.overall_mean) }}</strong></span>{% endif %}
+    <span class="text-slate-500 dark:text-slate-400">Coverage panel — not a representative sample</span>
+</div>
+{% if result.trace.warnings %}
+<details class="bg-amber-50 border border-amber-300 rounded-lg px-4 py-2" {{ 'open' if result.status != 'complete' else '' }}>
+    <summary class="text-[12px] font-medium text-amber-700">Warnings ({{ result.trace.warnings|length }})</summary>
+    <ul class="list-disc pl-5 mt-1">{% for w in result.trace.warnings %}<li>{{ w }}</li>{% endfor %}</ul>
+</details>
+{% endif %}
+
+{# KPI band #}
+<section aria-labelledby="h-scores">
+    <h2 id="h-scores" class="text-[15px] font-semibold my-3">Dimension scores (1–5, n={{ result.scores.valid_responses }})</h2>
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    {% for q in result.scores.per_question %}
+        <article class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
+            <div class="flex items-center gap-2">
+                <h3 class="font-semibold">{{ q.question_id }}</h3>
+                {% if q.disagreement %}<span class="ml-auto text-[12px] font-medium text-amber-700 bg-amber-50 border border-amber-300 rounded-full px-2 py-0.5">high disagreement</span>{% endif %}
+            </div>
+            {% if q.mean is not none %}
+            <p class="mt-1 text-[12px] text-slate-600 dark:text-slate-300">mean <strong class="text-slate-900">{{ '%.2f'|format(q.mean) }}</strong> · median {{ q.median }} · sd {{ '%.2f'|format(q.stdev) }} · n={{ q.count }}</p>
+            <div class="mt-2 h-2 rounded bg-slate-200 dark:bg-slate-700" role="img" aria-label="{{ q.question_id }} mean {{ '%.2f'|format(q.mean) }} of 5, {{ q.count }} ratings">
+                <div class="h-2 rounded {{ 'bg-amber-500' if q.disagreement else 'bg-sky-700' }}" style="width: {{ (q.mean / 5 * 100)|round(1) }}%"></div>
+            </div>
+            {% else %}<p class="mt-1 text-slate-500 dark:text-slate-400">No valid ratings — insufficient evidence.</p>{% endif %}
+        </article>
+    {% endfor %}
+    </div>
+    <p class="text-[12px] text-slate-500 dark:text-slate-400 mt-2">Synthetic-panel dispersion, not a population confidence interval.</p>
+</section>
+
+{# Themes #}
+<section aria-labelledby="h-themes">
+    <h2 id="h-themes" class="text-[15px] font-semibold my-3">Themes</h2>
+    {% if result.themes %}
+    <ul class="grid gap-3 md:grid-cols-2">
+    {% for t in result.themes %}
+        <li class="bg-white dark:bg-slate-800 border rounded-lg p-3 {{ 'border-amber-300' if t.sentiment == 'minority' else 'border-slate-200 dark:border-slate-700' }}">
+            <p><span class="text-[12px] font-semibold px-2 py-0.5 rounded-full border {{ 'text-amber-700 bg-amber-50 border-amber-300' if t.sentiment == 'minority' else 'text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-700' }}">{{ t.sentiment }}</span>
+            <strong class="ml-1">{{ t.title }}</strong></p>
+            <p class="mt-1 text-slate-600 dark:text-slate-300">{{ t.summary }}</p>
+            <p class="mt-1 text-[12px] text-slate-500 dark:text-slate-400">personas: {{ t.persona_ids|join(', ') }} · evidence: {{ t.evidence_ids|join(', ') }}</p>
+        </li>
+    {% endfor %}
+    </ul>
+    {% else %}<p class="text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">No themes (empty or partial run).</p>{% endif %}
+</section>
+
+{# Extraction table #}
+{% if result.extraction %}
+<section aria-labelledby="h-extract">
+    <h2 id="h-extract" class="text-[15px] font-semibold my-3">Structured extraction</h2>
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-x-auto">
+    <table class="w-full text-left">
+        <thead><tr class="border-b border-slate-200 dark:border-slate-700 text-[12px] text-slate-500 dark:text-slate-400">
+            <th scope="col" class="px-3 py-2 font-medium">Field</th><th scope="col" class="px-3 py-2 font-medium">Value</th><th scope="col" class="px-3 py-2 font-medium">Evidence</th>
+        </tr></thead>
+        <tbody>
+        {% for o in result.extraction.observations %}
+        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 {{ 'bg-slate-50 dark:bg-slate-700' if o.field == 'numerical_claim' else '' }}">
+            <th scope="row" class="px-3 py-2 font-medium whitespace-nowrap">{{ o.field }}</th>
+            <td class="px-3 py-2">{% if o.value is not none %}{{ o.value }}{% else %}<span class="text-[12px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-0.5">unknown</span>{% endif %}</td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">{{ o.evidence_quote if o.evidence_quote else '—' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% if result.extraction.persuasion_strategies %}<p class="text-[12px] text-slate-600 dark:text-slate-300 mt-2">Strategies: {{ result.extraction.persuasion_strategies|join(', ') }}</p>{% endif %}
+</section>
+{% else %}<p class="text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">No extraction — the run ended before image analysis.</p>{% endif %}
+
+{# Personas table #}
+{% if result.personas %}
+<section aria-labelledby="h-personas">
+    <h2 id="h-personas" class="text-[15px] font-semibold my-3">Coverage personas ({{ result.personas.personas|length }})</h2>
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-x-auto">
+    <table class="w-full text-left" id="persona-table">
+        <thead><tr class="border-b border-slate-200 dark:border-slate-700 text-[12px] text-slate-500 dark:text-slate-400">
+            <th scope="col" class="px-3 py-2 font-medium">ID</th><th scope="col" class="px-3 py-2 font-medium">Segment</th><th scope="col" class="px-3 py-2 font-medium">Stance</th><th scope="col" class="px-3 py-2 font-medium">Familiarity</th><th scope="col" class="px-3 py-2 font-medium">Needs</th><th scope="col" class="px-3 py-2 font-medium">Detail</th>
+        </tr></thead>
+        <tbody>
+        {% for p in result.personas.personas %}
+        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
+            <td class="px-3 py-2 font-medium whitespace-nowrap">{{ p.id }}</td>
+            <td class="px-3 py-2">{{ p.segment }}</td>
+            <td class="px-3 py-2 whitespace-nowrap">{{ p.stance }}</td>
+            <td class="px-3 py-2 whitespace-nowrap">{{ p.category_familiarity }}</td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">{{ p.needs|join(', ') }}</td>
+            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
+                <p class="text-[12px] mt-1"><strong>Supplied:</strong> {{ p.supplied_facts|join('; ') }}</p>
+                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4">{% for h in p.inferred_hypotheses %}<li>{{ h.field }}: {{ h.value }} (basis: {{ h.basis }})</li>{% endfor %}</ul>
+            </details></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</section>
+{% else %}<p class="text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">No personas — the run ended before panel generation.</p>{% endif %}
+
+{# Recommendations + provenance #}
+<section aria-labelledby="h-recs">
+    <h2 id="h-recs" class="text-[15px] font-semibold my-3">Evidence-linked recommendations</h2>
+    {% if result.recommendations %}
+    <ul class="list-disc pl-5 grid gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">{% for r in result.recommendations %}<li>{{ r }}</li>{% endfor %}</ul>
+    {% else %}<p class="text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">None.</p>{% endif %}
+</section>
+<details class="text-[12px] text-slate-500 dark:text-slate-400">
+    <summary>Run provenance</summary>
+    <p class="mt-1">model {{ result.trace.model }} · pipeline {{ result.trace.pipeline_version }} · revision {{ result.trace.code_revision }} · {{ result.trace.calls|length }} calls · eval {{ result.evaluation_id }}</p>
+    {% if result.uncertainty %}<ul class="list-disc pl-5 mt-1">{% for u in result.uncertainty %}<li>{{ u }}</li>{% endfor %}</ul>{% endif %}
+</details>
+{% endif %}
+<p class="mt-4"><a href="/" class="underline text-sky-700 dark:text-sky-300">Evaluate another ad</a></p>
+{% endblock %}

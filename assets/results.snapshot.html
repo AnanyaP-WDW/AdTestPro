@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdTestPro — Results</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+        // Pre-paint from saved choice or OS preference (no flash).
+        try {
+            const saved = localStorage.getItem('adtestpro-theme');
+            if (saved === 'dark' || (!saved && matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        } catch (e) {}
+    </script>
+    <style>
+        html.dark { color-scheme: dark; }
+        html.dark input, html.dark select, html.dark textarea {
+            background-color: #1e293b; border-color: #475569; color: #f1f5f9;
+        }
+        :focus-visible { outline: 2px solid #0369a1; outline-offset: 2px; }
+        html.dark :focus-visible { outline-color: #38bdf8; }
+        @media (max-width: 390px) { .no-hscroll { overflow-x: hidden; } }
+        details > summary { cursor: pointer; }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen text-[13px] no-hscroll">
+<header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+    <div class="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
+        <a href="/" class="font-semibold text-[15px] text-sky-800 dark:text-sky-300">AdTestPro</a>
+        <span class="text-slate-400" aria-hidden="true">/</span>
+        <nav aria-label="Breadcrumb" class="text-slate-600 dark:text-slate-300"><a href="/" class="underline">New evaluation</a> / Results</nav>
+        <span class="ml-auto text-[12px] px-2 py-1 rounded-full border text-emerald-700 bg-emerald-50 border-emerald-300" role="status">● ready</span>
+        <button type="button" id="theme-toggle" aria-pressed="false" aria-label="Toggle dark mode" title="Toggle dark mode"
+                class="min-w-[36px] min-h-[36px] px-2 rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300">◐</button>
+    </div>
+</header>
+<main class="mx-auto max-w-6xl px-4 py-6">
+    
+
+
+<div class="bg-white dark:bg-slate-800 border rounded-lg px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-slate-200 dark:border-slate-700" role="status">
+    <span class="text-[12px] font-semibold px-2 py-1 rounded-full border text-emerald-700 bg-emerald-50 border-emerald-300">complete</span>
+    <span>Scale: <strong>1–5</strong></span>
+    <span>Sample: <strong>12</strong> valid / 0 missing</span>
+    <span>Overall (unweighted mean): <strong>4.00</strong></span>
+    <span class="text-slate-500 dark:text-slate-400">Coverage panel — not a representative sample</span>
+</div>
+
+<details class="bg-amber-50 border border-amber-300 rounded-lg px-4 py-2" >
+    <summary class="text-[12px] font-medium text-amber-700">Warnings (12)</summary>
+    <ul class="list-disc pl-5 mt-1"><li>incomplete-panel: p01 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p02 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p03 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p04 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p05 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p06 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p07 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p08 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p09 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p10 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p11 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p12 dropped 1 answer(s) with invalid evidence</li></ul>
+</details>
+
+
+
+<section aria-labelledby="h-scores">
+    <h2 id="h-scores" class="text-[15px] font-semibold my-3">Dimension scores (1–5, n=12)</h2>
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    
+        <article class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
+            <div class="flex items-center gap-2">
+                <h3 class="font-semibold">clarity</h3>
+                
+            </div>
+            
+            <p class="mt-1 text-[12px] text-slate-600 dark:text-slate-300">mean <strong class="text-slate-900">4.00</strong> · median 4.0 · sd 0.00 · n=12</p>
+            <div class="mt-2 h-2 rounded bg-slate-200 dark:bg-slate-700" role="img" aria-label="clarity mean 4.00 of 5, 12 ratings">
+                <div class="h-2 rounded bg-sky-700" style="width: 80.0%"></div>
+            </div>
+            
+        </article>
+    
+    </div>
+    <p class="text-[12px] text-slate-500 dark:text-slate-400 mt-2">Synthetic-panel dispersion, not a population confidence interval.</p>
+</section>
+
+
+<section aria-labelledby="h-themes">
+    <h2 id="h-themes" class="text-[15px] font-semibold my-3">Themes</h2>
+    
+    <ul class="grid gap-3 md:grid-cols-2">
+    
+        <li class="bg-white dark:bg-slate-800 border rounded-lg p-3 border-slate-200 dark:border-slate-700">
+            <p><span class="text-[12px] font-semibold px-2 py-0.5 rounded-full border text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-700">positive</span>
+            <strong class="ml-1">clear</strong></p>
+            <p class="mt-1 text-slate-600 dark:text-slate-300">headline is clear</p>
+            <p class="mt-1 text-[12px] text-slate-500 dark:text-slate-400">personas: p01 · evidence: o1</p>
+        </li>
+    
+    </ul>
+    
+</section>
+
+
+
+<section aria-labelledby="h-extract">
+    <h2 id="h-extract" class="text-[15px] font-semibold my-3">Structured extraction</h2>
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-x-auto">
+    <table class="w-full text-left">
+        <thead><tr class="border-b border-slate-200 dark:border-slate-700 text-[12px] text-slate-500 dark:text-slate-400">
+            <th scope="col" class="px-3 py-2 font-medium">Field</th><th scope="col" class="px-3 py-2 font-medium">Value</th><th scope="col" class="px-3 py-2 font-medium">Evidence</th>
+        </tr></thead>
+        <tbody>
+        
+        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 ">
+            <th scope="row" class="px-3 py-2 font-medium whitespace-nowrap">visible_text</th>
+            <td class="px-3 py-2">Drink More</td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">Drink More</td>
+        </tr>
+        
+        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 ">
+            <th scope="row" class="px-3 py-2 font-medium whitespace-nowrap">price</th>
+            <td class="px-3 py-2"><span class="text-[12px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-0.5">unknown</span></td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">—</td>
+        </tr>
+        
+        </tbody>
+    </table>
+    </div>
+    <p class="text-[12px] text-slate-600 dark:text-slate-300 mt-2">Strategies: emotional_appeal</p>
+</section>
+
+
+
+
+<section aria-labelledby="h-personas">
+    <h2 id="h-personas" class="text-[15px] font-semibold my-3">Coverage personas (12)</h2>
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-x-auto">
+    <table class="w-full text-left" id="persona-table">
+        <thead><tr class="border-b border-slate-200 dark:border-slate-700 text-[12px] text-slate-500 dark:text-slate-400">
+            <th scope="col" class="px-3 py-2 font-medium">ID</th><th scope="col" class="px-3 py-2 font-medium">Segment</th><th scope="col" class="px-3 py-2 font-medium">Stance</th><th scope="col" class="px-3 py-2 font-medium">Familiarity</th><th scope="col" class="px-3 py-2 font-medium">Needs</th><th scope="col" class="px-3 py-2 font-medium">Detail</th>
+        </tr></thead>
+        <tbody>
+        
+        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
+            <td class="px-3 py-2 font-medium whitespace-nowrap">p01</td>
+            <td class="px-3 py-2">segment-1</td>
+            <td class="px-3 py-2 whitespace-nowrap">skeptical</td>
+            <td class="px-3 py-2 whitespace-nowrap">new</td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-1</td>
+            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
+                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: lack of time</p>
+                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-1 (basis: brief lists constrained budget)</li></ul>
+            </details></td>
+        </tr>
+        
+        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
+            <td class="px-3 py-2 font-medium whitespace-nowrap">p02</td>
+            <td class="px-3 py-2">segment-2</td>
+            <td class="px-3 py-2 whitespace-nowrap">neutral</td>
+            <td class="px-3 py-2 whitespace-nowrap">casual</td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-2</td>
+            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
+                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: plastic waste</p>
+                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-2 (basis: brief lists constrained budget)</li></ul>
+            </details></td>
+        </tr>
+        
+        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
+            <td class="px-3 py-2 font-medium whitespace-nowrap">p03</td>
+            <td class="px-3 py-2">segment-3</td>
+            <td class="px-3 py-2 whitespace-nowrap">receptive</td>
+            <td class="px-3 py-2 whitespace-nowrap">regular</td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-3</td>
+            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
+                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: lack of time</p>
+                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-3 (basis: brief lists constrained budget)</li></ul>
+            </details></td>
+        </tr>
+        
+        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
+            <td class="px-3 py-2 font-medium whitespace-nowrap">p04</td>
+            <td class="px-3 py-2">segment-4</td>
+            <td class="px-3 py-2 whitespace-nowrap">skeptical</td>
+            <td class="px-3 py-2 whitespace-nowrap">expert</td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-4</td>
+            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
+                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: plastic waste</p>
+                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-4 (basis: brief lists constrained budget)</li></ul>
+            </details></td>
+        </tr>
+        
+        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
+            <td class="px-3 py-2 font-medium whitespace-nowrap">p05</td>
+            <td class="px-3 py-2">segment-5</td>
+            <td class="px-3 py-2 whitespace-nowrap">neutral</td>
+            <td class="px-3 py-2 whitespace-nowrap">new</td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-5</td>
+            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
+                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: lack of time</p>
+                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-5 (basis: brief lists constrained budget)</li></ul>
+            </details></td>
+        </tr>
+        
+        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
+            <td class="px-3 py-2 font-medium whitespace-nowrap">p06</td>
+            <td class="px-3 py-2">segment-6</td>
+            <td class="px-3 py-2 whitespace-nowrap">receptive</td>
+            <td class="px-3 py-2 whitespace-nowrap">casual</td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-6</td>
+            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
+                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: plastic waste</p>
+                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-6 (basis: brief lists constrained budget)</li></ul>
+            </details></td>
+        </tr>
+        
+        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
+            <td class="px-3 py-2 font-medium whitespace-nowrap">p07</td>
+            <td class="px-3 py-2">segment-7</td>
+            <td class="px-3 py-2 whitespace-nowrap">skeptical</td>
+            <td class="px-3 py-2 whitespace-nowrap">regular</td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-7</td>
+            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
+                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: lack of time</p>
+                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-7 (basis: brief lists constrained budget)</li></ul>
+            </details></td>
+        </tr>
+        
+        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
+            <td class="px-3 py-2 font-medium whitespace-nowrap">p08</td>
+            <td class="px-3 py-2">segment-8</td>
+            <td class="px-3 py-2 whitespace-nowrap">neutral</td>
+            <td class="px-3 py-2 whitespace-nowrap">expert</td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-8</td>
+            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
+                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: plastic waste</p>
+                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-8 (basis: brief lists constrained budget)</li></ul>
+            </details></td>
+        </tr>
+        
+        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
+            <td class="px-3 py-2 font-medium whitespace-nowrap">p09</td>
+            <td class="px-3 py-2">segment-9</td>
+            <td class="px-3 py-2 whitespace-nowrap">receptive</td>
+            <td class="px-3 py-2 whitespace-nowrap">new</td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-9</td>
+            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
+                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: lack of time</p>
+                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-9 (basis: brief lists constrained budget)</li></ul>
+            </details></td>
+        </tr>
+        
+        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
+            <td class="px-3 py-2 font-medium whitespace-nowrap">p10</td>
+            <td class="px-3 py-2">segment-10</td>
+            <td class="px-3 py-2 whitespace-nowrap">skeptical</td>
+            <td class="px-3 py-2 whitespace-nowrap">casual</td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-10</td>
+            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
+                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: plastic waste</p>
+                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-10 (basis: brief lists constrained budget)</li></ul>
+            </details></td>
+        </tr>
+        
+        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
+            <td class="px-3 py-2 font-medium whitespace-nowrap">p11</td>
+            <td class="px-3 py-2">segment-11</td>
+            <td class="px-3 py-2 whitespace-nowrap">neutral</td>
+            <td class="px-3 py-2 whitespace-nowrap">regular</td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-11</td>
+            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
+                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: lack of time</p>
+                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-11 (basis: brief lists constrained budget)</li></ul>
+            </details></td>
+        </tr>
+        
+        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
+            <td class="px-3 py-2 font-medium whitespace-nowrap">p12</td>
+            <td class="px-3 py-2">segment-12</td>
+            <td class="px-3 py-2 whitespace-nowrap">receptive</td>
+            <td class="px-3 py-2 whitespace-nowrap">expert</td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-12</td>
+            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
+                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: plastic waste</p>
+                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-12 (basis: brief lists constrained budget)</li></ul>
+            </details></td>
+        </tr>
+        
+        </tbody>
+    </table>
+    </div>
+</section>
+
+
+
+<section aria-labelledby="h-recs">
+    <h2 id="h-recs" class="text-[15px] font-semibold my-3">Evidence-linked recommendations</h2>
+    <p class="text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">None.</p>
+</section>
+<details class="text-[12px] text-slate-500 dark:text-slate-400">
+    <summary>Run provenance</summary>
+    <p class="mt-1">model nvidia/nemotron-3.5-lightning:free · pipeline v0.1.0 · revision 7365682 · 17 calls · eval eval-b36ad2d579d8</p>
+    <ul class="list-disc pl-5 mt-1"><li>synthetic-panel dispersion, not population CI (n=12)</li><li>experimental screening signal; not a replacement for human research</li></ul>
+</details>
+
+<p class="mt-4"><a href="/" class="underline text-sky-700 dark:text-sky-300">Evaluate another ad</a></p>
+
+</main>
+<footer class="mx-auto max-w-6xl px-4 pb-8 text-[12px] text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700 pt-4">
+    Experimental creative-screening signal — not a replacement for human research. No CTR, sales, or causal-lift claims.
+</footer>
+<script>
+    (function () {
+        const btn = document.getElementById('theme-toggle');
+        const sync = () => btn.setAttribute('aria-pressed', document.documentElement.classList.contains('dark'));
+        sync();
+        btn.addEventListener('click', () => {
+            const dark = document.documentElement.classList.toggle('dark');
+            try { localStorage.setItem('adtestpro-theme', dark ? 'dark' : 'light'); } catch (e) {}
+            sync();
+        });
+    })();
+</script>
+</body>
+</html>

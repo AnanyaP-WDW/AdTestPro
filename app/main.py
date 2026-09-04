@@ -2,10 +2,24 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+import logging
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent
+
+# Load project-root .env for local runs (compose supplies env separately; existing env wins).
+load_dotenv(BASE_DIR.parent / ".env", override=False)
+
+# Terminal-visible logs: timestamped, level from env (default INFO so per-run
+# eval/status/tokens/cost lines show under `uvicorn app.main:app --reload`).
+logging.basicConfig(
+    level=os.getenv("ADTESTPRO_LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)-5s %(name)s %(message)s",
+    force=True,
+)
 
 # Ensure static dir exists so clean checkouts mount safely.
 (BASE_DIR / "static").mkdir(parents=True, exist_ok=True)

@@ -16,9 +16,14 @@ def _templates(request: Request):
     return request.app.state.templates
 
 
+def _ready() -> bool:
+    import os
+    return bool(os.getenv("OPENAI_API_KEY"))
+
+
 @router.get("/", response_class=HTMLResponse)
 async def form_page(request: Request):
-    return _templates(request).TemplateResponse(request, "form.html")
+    return _templates(request).TemplateResponse(request, "form.html", {"ready": _ready()})
 
 
 @router.post("/evaluate", response_class=HTMLResponse)
@@ -62,5 +67,7 @@ async def evaluate_page(
         # ponytail: safe error page, never raw tracebacks outward.
         return tpl.TemplateResponse(request, "results.html",
                                     {"error": "Evaluation failed. Check inputs and retry.",
-                                     "result": None}, status_code=502)
-    return tpl.TemplateResponse(request, "results.html", {"error": None, "result": result})
+                                     "result": None, "ready": _ready(),
+                                     "form_values": brief_data}, status_code=502)
+    return tpl.TemplateResponse(request, "results.html",
+                                {"error": None, "result": result, "ready": _ready()})
