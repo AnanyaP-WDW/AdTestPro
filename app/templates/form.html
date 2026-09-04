@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdTestPro - Ad Creative Testing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-8 md:p-16">
+    <div class="container mx-auto max-w-3xl">
+        <h1 class="text-4xl font-bold mb-4 text-center text-sky-300">AdTestPro</h1>
+        <p class="text-center text-sm text-gray-400 mb-12">Experimental creative-screening signal. Not a replacement for human research.</p>
+        <form method="post" action="/evaluate" enctype="multipart/form-data" class="space-y-8" id="eval-form">
+            <div class="space-y-4">
+                <label for="product_description" class="block text-sm font-medium text-gray-300">Product / service description *</label>
+                <textarea id="product_description" name="product_description" required maxlength="2000" rows="3" class="w-full p-4 text-sm rounded-lg bg-gray-800 border-gray-700 placeholder-gray-400 text-white" placeholder="Describe your product..."></textarea>
+            </div>
+
+            <div class="space-y-4">
+                <label for="campaign_objective" class="block text-sm font-medium text-gray-300">Campaign objective *</label>
+                <input type="text" id="campaign_objective" name="campaign_objective" required maxlength="1000" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4" placeholder="e.g., Test a new ad">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="space-y-4">
+                    <label for="age_min" class="block text-sm font-medium text-gray-300">Min age *</label>
+                    <input type="number" id="age_min" name="age_min" required min="13" max="100" value="25" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4">
+                </div>
+                <div class="space-y-4">
+                    <label for="age_max" class="block text-sm font-medium text-gray-300">Max age *</label>
+                    <input type="number" id="age_max" name="age_max" required min="13" max="100" value="40" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4">
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <label for="location" class="block text-sm font-medium text-gray-300">Location *</label>
+                <input type="text" id="location" name="location" required maxlength="200" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4" placeholder="e.g., Austin, USA">
+            </div>
+
+            <div class="space-y-4">
+                <label for="interests" class="block text-sm font-medium text-gray-300">Interests (comma-separated) *</label>
+                <input type="text" id="interests" name="interests" required class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4" placeholder="e.g., running, coffee">
+            </div>
+
+            <div class="space-y-4">
+                <label for="pain_points" class="block text-sm font-medium text-gray-300">Pain points (comma-separated) *</label>
+                <input type="text" id="pain_points" name="pain_points" required class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4" placeholder="e.g., lack of time">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="space-y-4">
+                    <label for="category_familiarity" class="block text-sm font-medium text-gray-300">Category familiarity *</label>
+                    <select id="category_familiarity" name="category_familiarity" required class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4">
+                        <option value="new">new</option>
+                        <option value="casual" selected>casual</option>
+                        <option value="regular">regular</option>
+                        <option value="expert">expert</option>
+                    </select>
+                </div>
+                <div class="space-y-4">
+                    <label for="price_sensitivity" class="block text-sm font-medium text-gray-300">Price sensitivity</label>
+                    <select id="price_sensitivity" name="price_sensitivity" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4">
+                        <option value="">—</option>
+                        <option value="low">low</option>
+                        <option value="medium">medium</option>
+                        <option value="high">high</option>
+                    </select>
+                </div>
+                <div class="space-y-4">
+                    <label for="brand_familiarity" class="block text-sm font-medium text-gray-300">Brand familiarity</label>
+                    <select id="brand_familiarity" name="brand_familiarity" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4">
+                        <option value="">—</option>
+                        <option value="unaware">unaware</option>
+                        <option value="aware">aware</option>
+                        <option value="customer">customer</option>
+                        <option value="loyal">loyal</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <label for="gender_constraint" class="block text-sm font-medium text-gray-300">Gender constraint (optional)</label>
+                <input type="text" id="gender_constraint" name="gender_constraint" maxlength="100" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4" placeholder="Leave blank for no constraint">
+            </div>
+
+            <div class="space-y-4">
+                <label class="block text-sm font-medium text-gray-300" for="image">Upload ad image (PNG/JPEG, max 15MB) *</label>
+                <input id="image" name="image" type="file" required accept="image/png, image/jpeg" class="block w-full text-sm text-gray-300">
+                <p class="mt-2 text-sm text-gray-400" id="file-info"></p>
+            </div>
+
+            <div class="space-y-4">
+                <span class="block text-sm font-medium text-gray-300">Questions (select up to 3)</span>
+                <label class="flex items-center space-x-3"><input type="checkbox" name="question_ids" value="attention" checked class="accent-sky-500"><span class="text-sm">Attention — does it grab attention?</span></label>
+                <label class="flex items-center space-x-3"><input type="checkbox" name="question_ids" value="clarity" checked class="accent-sky-500"><span class="text-sm">Clarity — is the message clear?</span></label>
+                <label class="flex items-center space-x-3"><input type="checkbox" name="question_ids" value="relevance" checked class="accent-sky-500"><span class="text-sm">Relevance — does it fit your needs?</span></label>
+                <label class="flex items-center space-x-3"><input type="checkbox" name="question_ids" value="credibility" class="accent-sky-500"><span class="text-sm">Credibility — is it believable?</span></label>
+                <label class="flex items-center space-x-3"><input type="checkbox" name="question_ids" value="action_intent" class="accent-sky-500"><span class="text-sm">Action intent — would you act?</span></label>
+            </div>
+
+            <button type="submit" id="submit-btn" class="w-full text-white bg-sky-600 hover:bg-sky-700 font-medium rounded-lg text-sm px-5 py-4 text-center">Submit for Testing</button>
+            <p id="loading" class="hidden text-center text-sm text-gray-400" role="status">Evaluating… this can take a minute.</p>
+        </form>
+    </div>
+    <script>
+        const boxes = document.querySelectorAll('input[type="checkbox"][name="question_ids"]');
+        boxes.forEach(b => b.addEventListener('change', () => {
+            if (document.querySelectorAll('input[name="question_ids"]:checked').length > 3) b.checked = false;
+        }));
+        document.getElementById('image').addEventListener('change', (e) => {
+            const f = e.target.files[0], info = document.getElementById('file-info');
+            if (!f) return;
+            if (f.type !== "image/png" && f.type !== "image/jpeg") { info.textContent = "Please select PNG or JPEG."; e.target.value = ""; return; }
+            if (f.size > 15 * 1024 * 1024) { info.textContent = "File exceeds 15MB."; e.target.value = ""; return; }
+            info.textContent = `File: ${f.name} (${(f.size / 1048576).toFixed(2)} MB)`;
+        });
+        document.getElementById('eval-form').addEventListener('submit', () => {
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('submit-btn').disabled = true;
+        });
+    </script>
+</body>
+</html>
