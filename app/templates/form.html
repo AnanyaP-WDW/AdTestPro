@@ -5,141 +5,119 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AdTestPro - Ad Creative Testing</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        primary: {"50":"#f0f9ff","100":"#e0f2fe","200":"#bae6fd","300":"#7dd3fc","400":"#38bdf8","500":"#0ea5e9","600":"#0284c7","700":"#0369a1","800":"#075985","900":"#0c4a6e","950":"#082f49"}
-                    }
-                }
-            }
-        }
-    </script>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen p-8 md:p-16">
     <div class="container mx-auto max-w-3xl">
-        <h1 class="text-4xl font-bold mb-12 text-center text-primary-300">AdTestPro</h1>
-        <form class="space-y-8">
+        <h1 class="text-4xl font-bold mb-4 text-center text-sky-300">AdTestPro</h1>
+        <p class="text-center text-sm text-gray-400 mb-12">Experimental creative-screening signal. Not a replacement for human research.</p>
+        <form method="post" action="/evaluate" enctype="multipart/form-data" class="space-y-8" id="eval-form">
             <div class="space-y-4">
-                <label for="description" class="block text-sm font-medium text-gray-300">Description</label>
-                <textarea id="description" rows="4" class="w-full p-4 text-sm rounded-lg bg-gray-800 border-gray-700 placeholder-gray-400 text-white focus:ring-primary-500 focus:border-primary-500" placeholder="Describe your ad concept..."></textarea>
+                <label for="product_description" class="block text-sm font-medium text-gray-300">Product / service description *</label>
+                <textarea id="product_description" name="product_description" required maxlength="2000" rows="3" class="w-full p-4 text-sm rounded-lg bg-gray-800 border-gray-700 placeholder-gray-400 text-white" placeholder="Describe your product..."></textarea>
+            </div>
+
+            <div class="space-y-4">
+                <label for="campaign_objective" class="block text-sm font-medium text-gray-300">Campaign objective *</label>
+                <input type="text" id="campaign_objective" name="campaign_objective" required maxlength="1000" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4" placeholder="e.g., Test a new ad">
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div class="space-y-4">
-                    <label for="age-range" class="block text-sm font-medium text-gray-300">Age Range</label>
-                    <input type="text" id="age-range" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-4" placeholder="e.g., 25-40">
+                    <label for="age_min" class="block text-sm font-medium text-gray-300">Min age *</label>
+                    <input type="number" id="age_min" name="age_min" required min="13" max="100" value="25" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4">
                 </div>
                 <div class="space-y-4">
-                    <label for="location" class="block text-sm font-medium text-gray-300">Location</label>
-                    <input type="text" id="location" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-4" placeholder="e.g., New York, USA">
+                    <label for="age_max" class="block text-sm font-medium text-gray-300">Max age *</label>
+                    <input type="number" id="age_max" name="age_max" required min="13" max="100" value="40" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4">
                 </div>
             </div>
 
             <div class="space-y-4">
-                <label for="interests" class="block text-sm font-medium text-gray-300">Interests</label>
-                <input type="text" id="interests" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-4" placeholder="e.g., Technology, Sports, Fashion">
+                <label for="location" class="block text-sm font-medium text-gray-300">Location *</label>
+                <input type="text" id="location" name="location" required maxlength="200" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4" placeholder="e.g., Austin, USA">
             </div>
 
             <div class="space-y-4">
-                <label for="pain-points" class="block text-sm font-medium text-gray-300">Pain Points</label>
-                <input type="text" id="pain-points" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-4" placeholder="e.g., Time management, Budget constraints">
+                <label for="interests" class="block text-sm font-medium text-gray-300">Interests (comma-separated) *</label>
+                <input type="text" id="interests" name="interests" required class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4" placeholder="e.g., running, coffee">
             </div>
 
             <div class="space-y-4">
-                <label class="block text-sm font-medium text-gray-300" for="ad-image">Upload Ad Concept Image</label>
-                <div class="flex items-center justify-center w-full">
-                    <label for="ad-image" class="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-800 hover:bg-gray-700">
-                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                            <svg class="w-8 h-8 mb-4 text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
-                            </svg>
-                            <p class="mb-2 text-sm text-gray-400"><span class="font-semibold">Click to upload</span> or drag and drop</p>
-                            <p class="text-xs text-gray-400">PNG or JPG (MAX. 15MB)</p>
-                        </div>
-                        <input id="ad-image" type="file" class="hidden" accept="image/png, image/jpeg" onchange="previewImage(event)" />
-                    </label>
+                <label for="pain_points" class="block text-sm font-medium text-gray-300">Pain points (comma-separated) *</label>
+                <input type="text" id="pain_points" name="pain_points" required class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4" placeholder="e.g., lack of time">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="space-y-4">
+                    <label for="category_familiarity" class="block text-sm font-medium text-gray-300">Category familiarity *</label>
+                    <select id="category_familiarity" name="category_familiarity" required class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4">
+                        <option value="new">new</option>
+                        <option value="casual" selected>casual</option>
+                        <option value="regular">regular</option>
+                        <option value="expert">expert</option>
+                    </select>
                 </div>
+                <div class="space-y-4">
+                    <label for="price_sensitivity" class="block text-sm font-medium text-gray-300">Price sensitivity</label>
+                    <select id="price_sensitivity" name="price_sensitivity" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4">
+                        <option value="">—</option>
+                        <option value="low">low</option>
+                        <option value="medium">medium</option>
+                        <option value="high">high</option>
+                    </select>
+                </div>
+                <div class="space-y-4">
+                    <label for="brand_familiarity" class="block text-sm font-medium text-gray-300">Brand familiarity</label>
+                    <select id="brand_familiarity" name="brand_familiarity" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4">
+                        <option value="">—</option>
+                        <option value="unaware">unaware</option>
+                        <option value="aware">aware</option>
+                        <option value="customer">customer</option>
+                        <option value="loyal">loyal</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <label for="gender_constraint" class="block text-sm font-medium text-gray-300">Gender constraint (optional)</label>
+                <input type="text" id="gender_constraint" name="gender_constraint" maxlength="100" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg block w-full p-4" placeholder="Leave blank for no constraint">
+            </div>
+
+            <div class="space-y-4">
+                <label class="block text-sm font-medium text-gray-300" for="image">Upload ad image (PNG/JPEG, max 15MB) *</label>
+                <input id="image" name="image" type="file" required accept="image/png, image/jpeg" class="block w-full text-sm text-gray-300">
                 <p class="mt-2 text-sm text-gray-400" id="file-info"></p>
-                <div id="image-preview" class="mt-4 hidden">
-                    <img id="preview" class="max-w-full h-auto rounded-lg" alt="Ad concept preview">
-                </div>
             </div>
 
             <div class="space-y-4">
-                <label class="block text-sm font-medium text-gray-300">Questions for Synthetic Audiences (Select up to 3)</label>
-                <div class="space-y-4">
-                    <label class="flex items-center space-x-3">
-                        <input type="checkbox" class="form-checkbox bg-gray-800 border-gray-600 text-primary-500 focus:ring-primary-500" name="questions" value="q1">
-                        <span class="text-sm text-gray-300">How appealing is this ad to you?</span>
-                    </label>
-                    <label class="flex items-center space-x-3">
-                        <input type="checkbox" class="form-checkbox bg-gray-800 border-gray-600 text-primary-500 focus:ring-primary-500" name="questions" value="q2">
-                        <span class="text-sm text-gray-300">Does this ad address your needs or pain points?</span>
-                    </label>
-                    <label class="flex items-center space-x-3">
-                        <input type="checkbox" class="form-checkbox bg-gray-800 border-gray-600 text-primary-500 focus:ring-primary-500" name="questions" value="q3">
-                        <span class="text-sm text-gray-300">How likely are you to engage with this ad?</span>
-                    </label>
-                    <label class="flex items-center space-x-3">
-                        <input type="checkbox" class="form-checkbox bg-gray-800 border-gray-600 text-primary-500 focus:ring-primary-500" name="questions" value="q4">
-                        <span class="text-sm text-gray-300">What emotions does this ad evoke?</span>
-                    </label>
-                    <label class="flex items-center space-x-3">
-                        <input type="checkbox" class="form-checkbox bg-gray-800 border-gray-600 text-primary-500 focus:ring-primary-500" name="questions" value="q5">
-                        <span class="text-sm text-gray-300">How well does this ad align with your interests?</span>
-                    </label>
-                </div>
+                <span class="block text-sm font-medium text-gray-300">Questions (select up to 3)</span>
+                <label class="flex items-center space-x-3"><input type="checkbox" name="question_ids" value="attention" checked class="accent-sky-500"><span class="text-sm">Attention — does it grab attention?</span></label>
+                <label class="flex items-center space-x-3"><input type="checkbox" name="question_ids" value="clarity" checked class="accent-sky-500"><span class="text-sm">Clarity — is the message clear?</span></label>
+                <label class="flex items-center space-x-3"><input type="checkbox" name="question_ids" value="relevance" checked class="accent-sky-500"><span class="text-sm">Relevance — does it fit your needs?</span></label>
+                <label class="flex items-center space-x-3"><input type="checkbox" name="question_ids" value="credibility" class="accent-sky-500"><span class="text-sm">Credibility — is it believable?</span></label>
+                <label class="flex items-center space-x-3"><input type="checkbox" name="question_ids" value="action_intent" class="accent-sky-500"><span class="text-sm">Action intent — would you act?</span></label>
             </div>
 
-            <button type="submit" class="w-full text-white bg-primary-600 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-800 font-medium rounded-lg text-sm px-5 py-4 text-center transition duration-150 ease-in-out">Submit for Testing</button>
+            <button type="submit" id="submit-btn" class="w-full text-white bg-sky-600 hover:bg-sky-700 font-medium rounded-lg text-sm px-5 py-4 text-center">Submit for Testing</button>
+            <p id="loading" class="hidden text-center text-sm text-gray-400" role="status">Evaluating… this can take a minute.</p>
         </form>
     </div>
-
     <script>
-        function previewImage(event) {
-            const file = event.target.files[0];
-            const fileInfo = document.getElementById('file-info');
-            const imagePreview = document.getElementById('image-preview');
-            const preview = document.getElementById('preview');
-
-            if (file) {
-                if (file.type !== "image/png" && file.type !== "image/jpeg") {
-                    fileInfo.textContent = "Please select a PNG or JPG file.";
-                    imagePreview.classList.add('hidden');
-                    return;
-                }
-
-                if (file.size > 15 * 1024 * 1024) {
-                    fileInfo.textContent = "File size exceeds 15MB. Please choose a smaller file.";
-                    imagePreview.classList.add('hidden');
-                    return;
-                }
-
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    preview.src = e.target.result;
-                    imagePreview.classList.remove('hidden');
-                    fileInfo.textContent = `File: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
-                }
-                reader.readAsDataURL(file);
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const checkboxes = document.querySelectorAll('input[type="checkbox"][name="questions"]');
-            checkboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', function() {
-                    const checkedBoxes = document.querySelectorAll('input[type="checkbox"][name="questions"]:checked');
-                    if (checkedBoxes.length > 3) {
-                        this.checked = false;
-                    }
-                });
-            });
+        const boxes = document.querySelectorAll('input[type="checkbox"][name="question_ids"]');
+        boxes.forEach(b => b.addEventListener('change', () => {
+            if (document.querySelectorAll('input[name="question_ids"]:checked').length > 3) b.checked = false;
+        }));
+        document.getElementById('image').addEventListener('change', (e) => {
+            const f = e.target.files[0], info = document.getElementById('file-info');
+            if (!f) return;
+            if (f.type !== "image/png" && f.type !== "image/jpeg") { info.textContent = "Please select PNG or JPEG."; e.target.value = ""; return; }
+            if (f.size > 15 * 1024 * 1024) { info.textContent = "File exceeds 15MB."; e.target.value = ""; return; }
+            info.textContent = `File: ${f.name} (${(f.size / 1048576).toFixed(2)} MB)`;
+        });
+        document.getElementById('eval-form').addEventListener('submit', () => {
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('submit-btn').disabled = true;
         });
     </script>
 </body>
 </html>
-

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdTestPro - Results</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-8 md:p-16">
+<div class="container mx-auto max-w-4xl space-y-10">
+    <h1 class="text-3xl font-bold text-center text-sky-300">Evaluation Results</h1>
+
+    {% if error %}
+    <div role="alert" class="p-6 rounded-lg bg-red-900/40 border border-red-700">
+        <p class="font-medium">Something went wrong</p>
+        <p class="text-sm text-gray-300">{{ error }}</p>
+        <a href="/" class="underline text-sm">Back to form</a>
+    </div>
+    {% elif result %}
+    <div class="p-4 rounded-lg border {{ 'border-amber-600 bg-amber-900/30' if result.status != 'complete' else 'border-gray-700 bg-gray-800' }}">
+        <p class="text-sm"><strong>Status:</strong> {{ result.status }} · <strong>Scale:</strong> 1–5 · <strong>Sample:</strong> {{ result.scores.valid_responses }} valid / {{ result.scores.missing_responses }} missing</p>
+        {% if result.trace.warnings %}
+        <ul class="mt-2 text-sm text-amber-200 list-disc pl-5">
+            {% for w in result.trace.warnings %}<li>{{ w }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+
+    <section>
+        <h2 class="text-xl font-semibold mb-3">Audience constraints</h2>
+        <p class="text-sm text-gray-300">{{ result.brief.product_description }} · {{ result.brief.campaign_objective }} · ages {{ result.brief.age_min }}–{{ result.brief.age_max }} · {{ result.brief.location }}</p>
+        <p class="text-sm text-gray-400">Coverage panel (not a representative sample). Supplied facts are listed per persona.</p>
+    </section>
+
+    <section>
+        <h2 class="text-xl font-semibold mb-3">Coverage personas ({{ result.personas.personas|length }})</h2>
+        <ul class="grid md:grid-cols-2 gap-4">
+        {% for p in result.personas.personas %}
+            <li class="p-4 rounded-lg bg-gray-800 text-sm">
+                <p class="font-medium">{{ p.id }} · {{ p.segment }} ({{ p.stance }})</p>
+                <p class="text-gray-400">needs: {{ p.needs|join(', ') }} · familiarity: {{ p.category_familiarity }}</p>
+                <p class="text-gray-500">supplied: {{ p.supplied_facts|join('; ') }}</p>
+            </li>
+        {% endfor %}
+        </ul>
+    </section>
+
+    <section>
+        <h2 class="text-xl font-semibold mb-3">Structured extraction</h2>
+        <ul class="space-y-2 text-sm">
+        {% for o in result.extraction.observations %}
+            <li class="p-3 rounded bg-gray-800"><strong>{{ o.field }}</strong>: {{ o.value if o.value is not none else 'unknown' }}{% if o.evidence_quote %} <span class="text-gray-400">“{{ o.evidence_quote }}”</span>{% endif %}</li>
+        {% endfor %}
+        </ul>
+    </section>
+
+    <section>
+        <h2 class="text-xl font-semibold mb-3">Dimension scores (1–5, n={{ result.scores.valid_responses }})</h2>
+        <ul class="space-y-2 text-sm">
+        {% for q in result.scores.per_question %}
+            <li class="p-3 rounded bg-gray-800"><strong>{{ q.question_id }}</strong>: mean {{ '%.2f'|format(q.mean) if q.mean is not none else '—' }} · median {{ q.median }} · sd {{ '%.2f'|format(q.stdev) if q.stdev is not none else '—' }} · n={{ q.count }}{% if q.disagreement %} <span class="text-amber-300">high disagreement — range widened</span>{% endif %}</li>
+        {% endfor %}
+        </ul>
+        {% if result.scores.overall_mean is not none %}<p class="text-sm mt-2">Overall (unweighted mean): <strong>{{ '%.2f'|format(result.scores.overall_mean) }}</strong> — synthetic-panel dispersion, not a population confidence interval.</p>{% endif %}
+    </section>
+
+    <section>
+        <h2 class="text-xl font-semibold mb-3">Themes</h2>
+        {% if result.themes %}
+        <ul class="space-y-2 text-sm">
+        {% for t in result.themes %}
+            <li class="p-3 rounded bg-gray-800"><strong>[{{ t.sentiment }}] {{ t.title }}</strong> — {{ t.summary }}</li>
+        {% endfor %}
+        </ul>
+        {% else %}<p class="text-sm text-gray-400">No themes (empty or partial run).</p>{% endif %}
+    </section>
+
+    <section>
+        <h2 class="text-xl font-semibold mb-3">Evidence-linked recommendations</h2>
+        {% if result.recommendations %}
+        <ul class="list-disc pl-5 text-sm space-y-1">{% for r in result.recommendations %}<li>{{ r }}</li>{% endfor %}</ul>
+        {% else %}<p class="text-sm text-gray-400">None.</p>{% endif %}
+    </section>
+
+    <footer class="text-xs text-gray-500 border-t border-gray-700 pt-4">
+        Experimental creative-screening signal only — not a replacement for human research. No CTR, sales, or causal-lift claims.
+        {% if result.uncertainty %}<ul class="list-disc pl-5 mt-1">{% for u in result.uncertainty %}<li>{{ u }}</li>{% endfor %}</ul>{% endif %}
+    </footer>
+    {% endif %}
+    <p class="text-center"><a href="/" class="underline text-sm">Evaluate another ad</a></p>
+</div>
+</body>
+</html>
