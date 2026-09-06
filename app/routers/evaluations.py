@@ -13,6 +13,8 @@ from app.core.pipeline import (
     BriefInvalid,
     ImageInvalid,
     MAX_IMAGE_BYTES,
+    MAX_PERSONAS,
+    PERSONA_COUNT,
     run_pipeline,
     select_questions,
 )
@@ -45,6 +47,7 @@ async def create_evaluation(
     price_sensitivity: Optional[str] = Form(None),
     brand_familiarity: Optional[str] = Form(None),
     question_ids: str = Form("attention,clarity,relevance"),
+    persona_count: int = Form(PERSONA_COUNT),
     idempotency_key: Optional[str] = Form(None),
     image: UploadFile = File(...),
     x_idempotency_key: Optional[str] = Header(None),
@@ -53,7 +56,7 @@ async def create_evaluation(
     content = await image.read(MAX_IMAGE_BYTES + 2)
     fields_sig = "|".join([product_description, campaign_objective, str(age_min), str(age_max),
                             location, interests, pain_points, category_familiarity,
-                            question_ids or ""])
+                            question_ids or "", str(persona_count)])
     digest = _key(key_seed, content, fields_sig)
     if digest and digest in _IDEMPOTENT_RESULTS:
         return JSONResponse(content=_IDEMPOTENT_RESULTS[digest],
@@ -75,6 +78,9 @@ async def create_evaluation(
         parse_brief(brief_data)
     except (BriefInvalid, ValueError) as e:
         return JSONResponse(status_code=422, content={"detail": f"invalid request: {e}"})
+    if not (1 <= persona_count <= MAX_PERSONAS):
+        return JSONResponse(status_code=422,
+                            content={"detail": f"persona_count must be between 1 and {MAX_PERSONAS}"})
     if len(content) > MAX_IMAGE_BYTES:
         return JSONResponse(status_code=422, content={"detail": "image over size limit"})
     try:
@@ -83,7 +89,7 @@ async def create_evaluation(
             brief_data=brief_data, image=content,
             filename=image.filename or "upload",
             content_type=image.content_type or "application/octet-stream",
-            question_ids=qids, client=client,
+            question_ids=qids, client=client, persona_count=persona_count,
         )
     except LLMError:
         # ponytail: safe mapping, no keys/prompts/stack traces outward.

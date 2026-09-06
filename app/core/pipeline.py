@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field, ValidationError
 from app.core import llm
 from app.core.llm import LLMError, untrusted_block
 from app.core.models import (
+    MAX_PERSONAS,
     PROMPT_VERSIONS,
     AdExtraction,
     AudienceBrief,
@@ -199,9 +200,13 @@ def persona_signature(p: Persona) -> tuple:
     )
 
 
-def validate_personas_deterministic(persona_set: PersonaSet, brief: AudienceBrief) -> list[str]:
-    """Field-level failures: constraints, coverage, duplicates, sensitive claims."""
+def validate_personas_deterministic(
+    persona_set: PersonaSet, brief: AudienceBrief, expected_count: Optional[int] = None,
+) -> list[str]:
+    """Field-level failures: constraints, coverage, panel size, duplicates, sensitive claims."""
     failures: list[str] = []
+    if expected_count is not None and len(persona_set.personas) != expected_count:
+        failures.append(f"coverage: panel size {len(persona_set.personas)} != requested {expected_count}")
     pains_needed = {p.lower() for p in brief.pain_points}
     interests_needed = {s.lower() for s in brief.interests}
     pains_seen: set[str] = set()
@@ -268,7 +273,7 @@ async def generate_personas(
         prompt_version=PROMPT_VERSIONS["personas"], stage="personas",
         trace=trace, client=client, temperature=0.2, max_tokens=6000,
     )
-    failures = validate_personas_deterministic(persona_set, brief)
+    failures = validate_personas_deterministic(persona_set, brief, expected_count=n)
     verdict_issues: list[str] = []
     if not failures:
         verdict_issues = await _llm_consistency_check(brief, persona_set, client, trace)
@@ -284,7 +289,7 @@ async def generate_personas(
             prompt_version=PROMPT_VERSIONS["personas"], stage="personas_repair",
             trace=trace, client=client, temperature=0.2, max_tokens=6000,
         )
-        failures = validate_personas_deterministic(persona_set, brief)
+        failures = validate_personas_deterministic(persona_set, brief, expected_count=n)
         if failures:
             raise PersonaInvalid("; ".join(failures))
         verdict_issues = await _llm_consistency_check(brief, persona_set, client, trace)
@@ -424,7 +429,7 @@ class PersonaAnswerModel(BaseModel):
 
 async def _respond_one(
     persona: Persona, extraction: AdExtraction, questions: list[SurveyQuestion],
-    client, trace: Optional[EvaluationTrace],
+    client, trace: Optional[EvaluationTrace], model: Optional[str] = None,
 ) -> Optional[PersonaResponse]:
     rubric_text = "\n".join(
         f"- {q.id}: {q.text} " + "; ".join(f"{k}={v}" for k, v in sorted(q.rubric.items()))
@@ -440,7 +445,7 @@ async def _respond_one(
         out = await llm.complete_structured(
             model_cls=PersonaAnswerModel, system=load_prompt("respond"), user=user,
             prompt_version=PROMPT_VERSIONS["respond"], stage="respond",
-            trace=trace, client=client, temperature=0.2, max_tokens=2500,
+            trace=trace, client=client, temperature=0.2, max_tokens=2500, model=model,
         )
     except LLMError as e:
         if trace is not None:
@@ -468,8 +473,12 @@ async def collect_responses(
     trace: Optional[EvaluationTrace] = None,
 ) -> list[PersonaResponse]:
     # Independent + concurrent; fixed limit enforced inside the llm adapter.
+    # Judgment debias hedge: rotate the model pool by persona index (deterministic,
+    # arrival-order independent). Non-respond stages stay on the primary model.
+    pool = llm.model_pool(client)
     results = await asyncio.gather(*[
-        _respond_one(p, extraction, questions, client, trace) for p in persona_set.personas
+        _respond_one(p, extraction, questions, client, trace, model=pool[i % len(pool)])
+        for i, p in enumerate(persona_set.personas)
     ])
     return [r for r in results if r is not None]
 
@@ -591,7 +600,7 @@ async def run_pipeline(
     question_ids: list[str],
     client=None,
     evaluation_id: Optional[str] = None,
-    max_personas: int = PERSONA_COUNT,
+    persona_count: int = PERSONA_COUNT,
 ) -> EvaluationResult:
     """Explicit states, one repair per LLM stage, terminal outcomes only (S5)."""
     eid = evaluation_id or f"eval-{uuid.uuid4().hex[:12]}"
@@ -615,9 +624,10 @@ async def run_pipeline(
             return _finish("extraction_invalid" if isinstance(e, ImageInvalid) else "persona_invalid"
                            if isinstance(e, (BriefInvalid, ValidationError, ValueError)) else "pipeline_error")
         transition(trace, "VALIDATED")
-        # --- personas
+        # --- personas (clamp defensively; HTTP boundary rejects out-of-range first)
         try:
-            persona_set = await generate_personas(brief, client, trace, n=min(max_personas, PERSONA_COUNT))
+            persona_set = await generate_personas(
+                brief, client, trace, n=max(1, min(persona_count, MAX_PERSONAS)))
         except PersonaInvalid as e:
             trace.warnings.append(f"persona_invalid: {e}")
             return _finish("persona_invalid", brief=brief)

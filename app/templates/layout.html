@@ -1,65 +1,60 @@
 <!DOCTYPE html>
-{# Design tokens (single source — no inline hex outside this block):
-   canvas: bg-slate-100 dark:bg-slate-900 | card: bg-white dark:bg-slate-800, border-slate-200 dark:border-slate-700
-   ink: text-slate-900 dark:text-slate-100 | secondary: text-slate-600 dark:text-slate-300
-   muted: text-slate-500 dark:text-slate-400 | accent: sky-700 (sky-400 on dark for links)
-   warn: amber-700 on amber-50 | danger: red-700 on red-50 | ok: emerald-700 on emerald-50
-   type: 12px labels / 13px body / 15px semibold heads; targets >=36px. #}
+{# App shell. Tokens live in /static/app.css (single source of truth).
+   `ready` is a bool; `ready_missing` an optional list of missing config keys. #}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}AdTestPro{% endblock %}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = { darkMode: 'class' };
-        // Pre-paint from saved choice or OS preference (no flash).
+        /* Pre-paint theme from saved choice or OS preference (avoids flash). */
         try {
-            const saved = localStorage.getItem('adtestpro-theme');
+            var saved = localStorage.getItem('adtestpro-theme');
             if (saved === 'dark' || (!saved && matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.classList.add('dark');
             }
         } catch (e) {}
     </script>
-    <style>
-        html.dark { color-scheme: dark; }
-        html.dark input, html.dark select, html.dark textarea {
-            background-color: #1e293b; border-color: #475569; color: #f1f5f9;
-        }
-        :focus-visible { outline: 2px solid #0369a1; outline-offset: 2px; }
-        html.dark :focus-visible { outline-color: #38bdf8; }
-        @media (max-width: 390px) { .no-hscroll { overflow-x: hidden; } }
-        details > summary { cursor: pointer; }
-    </style>
+    <link rel="stylesheet" href="/static/app.css">
+    <script src="/static/app.js" defer></script>
 </head>
-<body class="bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen text-[13px] no-hscroll">
-<header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-    <div class="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
-        <a href="/" class="font-semibold text-[15px] text-sky-800 dark:text-sky-300">AdTestPro</a>
-        <span class="text-slate-400" aria-hidden="true">/</span>
-        <nav aria-label="Breadcrumb" class="text-slate-600 dark:text-slate-300">{% block breadcrumb %}Evaluate{% endblock %}</nav>
-        <span class="ml-auto text-[12px] px-2 py-1 rounded-full border {{ 'text-emerald-700 bg-emerald-50 border-emerald-300' if ready else 'text-slate-500 bg-slate-50 border-slate-300' }}" role="status">● {{ 'ready' if ready else 'not configured' }}</span>
-        <button type="button" id="theme-toggle" aria-pressed="false" aria-label="Toggle dark mode" title="Toggle dark mode"
-                class="min-w-[36px] min-h-[36px] px-2 rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300">◐</button>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="shell-header">
+    <div class="shell-header__bar">
+        <a href="/" class="brand" aria-label="AdTestPro home">
+            <span class="brand__mark" aria-hidden="true">A</span>
+            <span class="brand__name">AdTestPro</span>
+            <span class="brand__tag">Creative screening</span>
+        </a>
+        <nav class="shell-nav" aria-label="Primary">
+            <a href="/" {% if nav == 'evaluate' %}aria-current="page"{% endif %}>Evaluate</a>
+            <a href="/docs" {% if nav == 'api' %}aria-current="page"{% endif %}>API docs</a>
+        </nav>
+        <div class="shell-header__end">
+            {% if ready %}
+            <span class="readiness readiness--ok" role="status"><span class="readiness__dot" aria-hidden="true"></span>Provider ready</span>
+            {% else %}
+            <span class="readiness" role="status"
+                  title="Missing: {{ (ready_missing if ready_missing else ['OPENAI_API_KEY'])|join(', ') }}">
+                <span class="readiness__dot" aria-hidden="true"></span>Not configured</span>
+            {% endif %}
+            <button type="button" id="theme-toggle" aria-pressed="false" aria-label="Toggle dark mode" class="theme-toggle">◐</button>
+        </div>
     </div>
 </header>
-<main class="mx-auto max-w-6xl px-4 py-6">
+<div class="page-header">
+    <div>
+        <nav class="crumbs" aria-label="Breadcrumb">{% block crumbs %}<a href="/">Evaluate</a>{% endblock %}</nav>
+        <h1>{% block page_title %}AdTestPro{% endblock %}</h1>
+        <p class="page-header__sub">{% block page_sub %}{% endblock %}</p>
+    </div>
+</div>
+<main id="main">
     {% block content %}{% endblock %}
 </main>
-<footer class="mx-auto max-w-6xl px-4 pb-8 text-[12px] text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700 pt-4">
+<footer class="shell-footer">
     Experimental creative-screening signal — not a replacement for human research. No CTR, sales, or causal-lift claims.
 </footer>
-<script>
-    (function () {
-        const btn = document.getElementById('theme-toggle');
-        const sync = () => btn.setAttribute('aria-pressed', document.documentElement.classList.contains('dark'));
-        sync();
-        btn.addEventListener('click', () => {
-            const dark = document.documentElement.classList.toggle('dark');
-            try { localStorage.setItem('adtestpro-theme', dark ? 'dark' : 'light'); } catch (e) {}
-            sync();
-        });
-    })();
-</script>
 </body>
 </html>

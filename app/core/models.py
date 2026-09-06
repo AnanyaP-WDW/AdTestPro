@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # Stable version strings for prompts / pipeline / schemas.
 PIPELINE_VERSION = "v0.1.0"
 SCHEMA_VERSION = "v0.1.0"
+MAX_PERSONAS = 25  # user-selectable panel size ceiling (schema-level bound)
 PROMPT_VERSIONS = {
     "personas": "personas-v1",
     "extract_ad": "extract_ad-v1",
@@ -142,7 +143,7 @@ class Persona(BaseModel):
 
 
 class PersonaSet(BaseModel):
-    personas: list[Persona] = Field(min_length=1, max_length=24)
+    personas: list[Persona] = Field(min_length=1, max_length=MAX_PERSONAS)
     coverage_label: Literal["coverage_panel", "representative_sample"] = "coverage_panel"
 
     @field_validator("personas", mode="after")

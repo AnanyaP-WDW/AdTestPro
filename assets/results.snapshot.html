@@ -4,316 +4,842 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AdTestPro — Results</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>AdTestPro — Evaluation report</title>
     <script>
-        tailwind.config = { darkMode: 'class' };
-        // Pre-paint from saved choice or OS preference (no flash).
+        /* Pre-paint theme from saved choice or OS preference (avoids flash). */
         try {
-            const saved = localStorage.getItem('adtestpro-theme');
+            var saved = localStorage.getItem('adtestpro-theme');
             if (saved === 'dark' || (!saved && matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.classList.add('dark');
             }
         } catch (e) {}
     </script>
-    <style>
-        html.dark { color-scheme: dark; }
-        html.dark input, html.dark select, html.dark textarea {
-            background-color: #1e293b; border-color: #475569; color: #f1f5f9;
-        }
-        :focus-visible { outline: 2px solid #0369a1; outline-offset: 2px; }
-        html.dark :focus-visible { outline-color: #38bdf8; }
-        @media (max-width: 390px) { .no-hscroll { overflow-x: hidden; } }
-        details > summary { cursor: pointer; }
-    </style>
+    <link rel="stylesheet" href="/static/app.css">
+    <script src="/static/app.js" defer></script>
 </head>
-<body class="bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen text-[13px] no-hscroll">
-<header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-    <div class="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
-        <a href="/" class="font-semibold text-[15px] text-sky-800 dark:text-sky-300">AdTestPro</a>
-        <span class="text-slate-400" aria-hidden="true">/</span>
-        <nav aria-label="Breadcrumb" class="text-slate-600 dark:text-slate-300"><a href="/" class="underline">New evaluation</a> / Results</nav>
-        <span class="ml-auto text-[12px] px-2 py-1 rounded-full border text-emerald-700 bg-emerald-50 border-emerald-300" role="status">● ready</span>
-        <button type="button" id="theme-toggle" aria-pressed="false" aria-label="Toggle dark mode" title="Toggle dark mode"
-                class="min-w-[36px] min-h-[36px] px-2 rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300">◐</button>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="shell-header">
+    <div class="shell-header__bar">
+        <a href="/" class="brand" aria-label="AdTestPro home">
+            <span class="brand__mark" aria-hidden="true">A</span>
+            <span class="brand__name">AdTestPro</span>
+            <span class="brand__tag">Creative screening</span>
+        </a>
+        <nav class="shell-nav" aria-label="Primary">
+            <a href="/" aria-current="page">Evaluate</a>
+            <a href="/docs" >API docs</a>
+        </nav>
+        <div class="shell-header__end">
+            
+            <span class="readiness readiness--ok" role="status"><span class="readiness__dot" aria-hidden="true"></span>Provider ready</span>
+            
+            <button type="button" id="theme-toggle" aria-pressed="false" aria-label="Toggle dark mode" class="theme-toggle">◐</button>
+        </div>
     </div>
 </header>
-<main class="mx-auto max-w-6xl px-4 py-6">
-    
-
-
-<div class="bg-white dark:bg-slate-800 border rounded-lg px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-slate-200 dark:border-slate-700" role="status">
-    <span class="text-[12px] font-semibold px-2 py-1 rounded-full border text-emerald-700 bg-emerald-50 border-emerald-300">complete</span>
-    <span>Scale: <strong>1–5</strong></span>
-    <span>Sample: <strong>12</strong> valid / 0 missing</span>
-    <span>Overall (unweighted mean): <strong>4.00</strong></span>
-    <span class="text-slate-500 dark:text-slate-400">Coverage panel — not a representative sample</span>
+<div class="page-header">
+    <div>
+        <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Evaluate</a> <span aria-hidden="true">/</span> <span aria-current="page">Report</span></nav>
+        <h1>Evaluation report</h1>
+        <p class="page-header__sub">Coverage-panel screening. Every number is computed in code; the model never writes a score.</p>
+    </div>
 </div>
-
-<details class="bg-amber-50 border border-amber-300 rounded-lg px-4 py-2" >
-    <summary class="text-[12px] font-medium text-amber-700">Warnings (12)</summary>
-    <ul class="list-disc pl-5 mt-1"><li>incomplete-panel: p01 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p02 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p03 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p04 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p05 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p06 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p07 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p08 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p09 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p10 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p11 dropped 1 answer(s) with invalid evidence</li><li>incomplete-panel: p12 dropped 1 answer(s) with invalid evidence</li></ul>
-</details>
-
-
-
-<section aria-labelledby="h-scores">
-    <h2 id="h-scores" class="text-[15px] font-semibold my-3">Dimension scores (1–5, n=12)</h2>
-    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+<main id="main">
     
-        <article class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
-            <div class="flex items-center gap-2">
-                <h3 class="font-semibold">clarity</h3>
+
+
+<div data-status="complete">
+
+    
+    <div class="card status-strip" role="status">
+        <span class="badge badge--ok">Complete</span>
+        <span class="status-strip__item">Scale <strong>1–5</strong></span>
+        <span class="status-strip__item">Panel <strong>12</strong> personas</span>
+        <span class="status-strip__item">Rating cells <strong>24</strong> valid · <strong>0</strong> missing</span>
+        
+        <span class="status-strip__item">Overall mean <strong>4.50</strong></span>
+        
+        <span class="status-strip__item muted">Coverage panel — not a representative sample</span>
+    </div>
+
+    
+
+    
+    <section class="card report__section" aria-labelledby="h-context" id="context">
+        <div class="card__body">
+            <h2 class="card__title" id="h-context">Run context</h2>
+            <div class="ctx-grid" style="margin-top: 12px;">
+                
+                <img class="ctx-thumb" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/2wBDAQoLCw4NDhwQEBw7KCIoOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozv/wAARCABAAEADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDlaKKK+dP2YKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooA//Z" alt="Thumbnail of the evaluated ad creative">
+                
+                <dl class="ctx-kv">
+                    <dt>Campaign objective</dt><dd>Test a new ad</dd>
+                    <dt>Product / service</dt><dd>A reusable water bottle</dd>
+                    
+                    <dt>Target audience</dt>
+                    <dd>Ages 25–40 · Austin, USA · casual familiarity · interested in running, coffee</dd>
+                    <dt>Pain points</dt><dd>lack of time, plastic waste</dd>
+                    
+                    <dt>Dimensions</dt><dd>Clarity, Relevance</dd>
+                    <dt>Run ID</dt><dd class="tnum">eval-4c216e3b6b33</dd>
+                </dl>
+            </div>
+        </div>
+    </section>
+
+    
+    <section class="report__section" aria-labelledby="h-glance" id="at-a-glance">
+        <h2 class="report__heading" id="h-glance">At a glance</h2>
+        <div class="kpi-row">
+            <div class="card kpi">
+                <p class="kpi__label">Overall mean</p>
+                <p class="kpi__value">4.50</p>
+                <p class="kpi__note">Unweighted across 2 dimension(s)</p>
+            </div>
+            
+            <div class="card kpi">
+                <p class="kpi__label">Strongest dimension</p>
+                <p class="kpi__value">Relevance</p>
+                <p class="kpi__note">mean 5.00 · n=12</p>
+            </div>
+            
+            
+            <div class="card kpi">
+                <p class="kpi__label">Weakest dimension</p>
+                <p class="kpi__value">Clarity</p>
+                <p class="kpi__note">mean 4.00 · n=12</p>
+            </div>
+            
+            <div class="card kpi">
+                <p class="kpi__label">Disagreeing dimensions</p>
+                <p class="kpi__value">0</p>
+                <p class="kpi__note">of 2 — see score detail</p>
+            </div>
+        </div>
+    </section>
+
+    
+    <section class="report__section" aria-labelledby="h-recs" id="recommendations">
+        <h2 class="report__heading" id="h-recs">Recommended next actions</h2>
+        
+        <p class="muted card card__body">No recommendations were produced for this run.</p>
+        
+    </section>
+
+    
+    <section class="report__section" aria-labelledby="h-scores" id="scores">
+        <h2 class="report__heading" id="h-scores">Dimension scores <span class="badge">Scale 1–5</span></h2>
+        <div class="score-grid">
+            
+            <article class="card score-card">
+                <div class="score-card__head">
+                    <h3 class="card__title">Clarity</h3>
+                    
+                </div>
+                
+                <p class="score-card__mean">4.00<span class="muted" style="font-size:13px;font-weight:400;"> / 5</span></p>
+                <p class="score-card__stats">median 4.0 · sd 0.00 · n=12 ratings</p>
+                <div class="score-bar" role="img" aria-label="Clarity mean 4.00 of 5, 12 ratings">
+                    <div class="score-bar__fill " style="width: 80.0%"></div>
+                </div>
+                
+                
+                <div class="dist" aria-label="Distribution of 12 ratings from 1 to 5">
+                    
+                    
+                    <div class="dist__cell">
+                        <div class="dist__bar-wrap">
+                            <div class="dist__bar "
+                                 style="height: 0.0%"
+                                 title="0 rating(s) of 1"></div>
+                        </div>
+                        <span class="dist__n tnum">0</span>
+                    </div>
+                    
+                    
+                    <div class="dist__cell">
+                        <div class="dist__bar-wrap">
+                            <div class="dist__bar "
+                                 style="height: 0.0%"
+                                 title="0 rating(s) of 2"></div>
+                        </div>
+                        <span class="dist__n tnum">0</span>
+                    </div>
+                    
+                    
+                    <div class="dist__cell">
+                        <div class="dist__bar-wrap">
+                            <div class="dist__bar "
+                                 style="height: 0.0%"
+                                 title="0 rating(s) of 3"></div>
+                        </div>
+                        <span class="dist__n tnum">0</span>
+                    </div>
+                    
+                    
+                    <div class="dist__cell">
+                        <div class="dist__bar-wrap">
+                            <div class="dist__bar dist__bar--mode"
+                                 style="height: 100.0%"
+                                 title="12 rating(s) of 4"></div>
+                        </div>
+                        <span class="dist__n tnum">12</span>
+                    </div>
+                    
+                    
+                    <div class="dist__cell">
+                        <div class="dist__bar-wrap">
+                            <div class="dist__bar "
+                                 style="height: 0.0%"
+                                 title="0 rating(s) of 5"></div>
+                        </div>
+                        <span class="dist__n tnum">0</span>
+                    </div>
+                    
+                </div>
+                <p class="small muted" style="margin-top:6px;">Ratings 1 → 5</p>
+                
+            </article>
+            
+            <article class="card score-card">
+                <div class="score-card__head">
+                    <h3 class="card__title">Relevance</h3>
+                    
+                </div>
+                
+                <p class="score-card__mean">5.00<span class="muted" style="font-size:13px;font-weight:400;"> / 5</span></p>
+                <p class="score-card__stats">median 5.0 · sd 0.00 · n=12 ratings</p>
+                <div class="score-bar" role="img" aria-label="Relevance mean 5.00 of 5, 12 ratings">
+                    <div class="score-bar__fill " style="width: 100.0%"></div>
+                </div>
+                
+                
+                <div class="dist" aria-label="Distribution of 12 ratings from 1 to 5">
+                    
+                    
+                    <div class="dist__cell">
+                        <div class="dist__bar-wrap">
+                            <div class="dist__bar "
+                                 style="height: 0.0%"
+                                 title="0 rating(s) of 1"></div>
+                        </div>
+                        <span class="dist__n tnum">0</span>
+                    </div>
+                    
+                    
+                    <div class="dist__cell">
+                        <div class="dist__bar-wrap">
+                            <div class="dist__bar "
+                                 style="height: 0.0%"
+                                 title="0 rating(s) of 2"></div>
+                        </div>
+                        <span class="dist__n tnum">0</span>
+                    </div>
+                    
+                    
+                    <div class="dist__cell">
+                        <div class="dist__bar-wrap">
+                            <div class="dist__bar "
+                                 style="height: 0.0%"
+                                 title="0 rating(s) of 3"></div>
+                        </div>
+                        <span class="dist__n tnum">0</span>
+                    </div>
+                    
+                    
+                    <div class="dist__cell">
+                        <div class="dist__bar-wrap">
+                            <div class="dist__bar "
+                                 style="height: 0.0%"
+                                 title="0 rating(s) of 4"></div>
+                        </div>
+                        <span class="dist__n tnum">0</span>
+                    </div>
+                    
+                    
+                    <div class="dist__cell">
+                        <div class="dist__bar-wrap">
+                            <div class="dist__bar dist__bar--mode"
+                                 style="height: 100.0%"
+                                 title="12 rating(s) of 5"></div>
+                        </div>
+                        <span class="dist__n tnum">12</span>
+                    </div>
+                    
+                </div>
+                <p class="small muted" style="margin-top:6px;">Ratings 1 → 5</p>
+                
+            </article>
+            
+        </div>
+        <p class="small muted" style="margin-top:8px;">Synthetic-panel dispersion, not a population confidence interval.</p>
+    </section>
+
+    
+    <section class="report__section" aria-labelledby="h-themes" id="themes">
+        <h2 class="report__heading" id="h-themes">Audience themes</h2>
+        
+        <div class="score-grid" style="grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));">
+            
+            <article class="card score-card" >
+                <div class="score-card__head">
+                    <span class="badge badge--accent">positive</span>
+                    <h3 class="card__title">clear</h3>
+                </div>
+                <p style="margin-top:8px;font-size:13px;">headline is clear</p>
+                <p class="small muted" style="margin-top:8px;">
+                    Personas: p01<br>
+                    Evidence:
+                    
+                        <a class="ref" href="#obs-o1">o1</a>
+                        
+                    
+                </p>
+            </article>
+            
+        </div>
+        
+    </section>
+
+    
+    
+    <section class="report__section" aria-labelledby="h-evidence" id="evidence">
+        <h2 class="report__heading" id="h-evidence">Structured extraction <span class="badge">Observation vs. interpretation</span></h2>
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Extraction observations table, scrollable">
+            <table>
+                <caption class="visually-hidden">Observable facts extracted from the creative, with evidence and confidence</caption>
+                <thead><tr>
+                    <th scope="col">ID</th><th scope="col">Field</th><th scope="col">Value</th><th scope="col">Evidence</th><th scope="col">Region</th><th scope="col">Conf.</th>
+                </tr></thead>
+                <tbody>
+                
+                <tr class="evidence-anchor" id="obs-o1">
+                    <th scope="row"><span class="ref">o1</span></th>
+                    <td>visible text</td>
+                    <td>Drink More</td>
+                    <td class="muted">Drink More</td>
+                    <td class="muted">center</td>
+                    <td><span class="conf">90%</span></td>
+                </tr>
+                
+                <tr class="evidence-anchor" id="obs-o2">
+                    <th scope="row"><span class="ref">o2</span></th>
+                    <td>price</td>
+                    <td><span class="chip">unknown</span></td>
+                    <td class="muted">—</td>
+                    <td class="muted">—</td>
+                    <td><span class="conf">0%</span></td>
+                </tr>
+                
+                </tbody>
+            </table>
+        </div>
+
+        
+        <details class="disclosure" style="margin-top:12px;">
+            <summary>Interpretations (1) — model reads, kept separate from facts</summary>
+            <div class="disclosure__body">
+                <div class="table-wrap" style="border:0;" tabindex="0" role="region" aria-label="Interpretations table, scrollable">
+                    <table>
+                        <thead><tr><th scope="col">Aspect</th><th scope="col">Read</th><th scope="col">Evidence</th><th scope="col">Conf.</th></tr></thead>
+                        <tbody>
+                        
+                        <tr>
+                            <th scope="row">tone</th>
+                            <td>upbeat</td>
+                            <td><a class="ref" href="#obs-o1">o1</a> </td>
+                            <td><span class="conf">70%</span></td>
+                        </tr>
+                        
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </details>
+        
+
+        
+        <p class="small" style="margin-top:8px;"><strong>Persuasion strategies:</strong>
+            <span class="chip">emotional appeal</span> 
+        </p>
+        
+    </section>
+    
+
+    
+    
+    <section class="report__section" aria-labelledby="h-panel" id="panel">
+        <h2 class="report__heading" id="h-panel">Coverage panel <span class="badge">12 personas</span></h2>
+        <div class="card card__body" style="margin-bottom:12px;">
+            <p class="small"><strong>Composition.</strong>
+                Stance: 4 skeptical · 4 neutral · 4 receptive
+                &nbsp;·&nbsp; Familiarity: 3 new · 3 casual · 3 regular · 3 expert
+            </p>
+            <p class="small muted" style="margin-top:4px;">Panel slots rotate across your pain points, interests, familiarity, and stance — coverage by construction, not backstories.</p>
+        </div>
+
+        <details class="disclosure">
+            <summary>Persona profiles and individual responses (12)</summary>
+            <div class="disclosure__body">
+                <div class="table-wrap" style="border:0;" tabindex="0" role="region" aria-label="Persona table, scrollable">
+                    <table>
+                        <thead><tr>
+                            <th scope="col">ID</th><th scope="col">Segment</th><th scope="col">Stance</th><th scope="col">Familiarity</th><th scope="col">Provenance &amp; responses</th>
+                        </tr></thead>
+                        <tbody>
+                        
+                        <tr>
+                            <th scope="row">p01</th>
+                            <td>segment-1</td>
+                            <td>skeptical</td>
+                            <td>new</td>
+                            <td>
+                                <details>
+                                    <summary class="link" style="cursor:pointer;">Profile &amp; answers</summary>
+                                    <p class="small" style="margin-top:6px;"><strong>Needs:</strong> need-1</p>
+                                    <p class="small"><strong>Supplied (from brief):</strong> location: Austin, USA; pain: lack of time</p>
+                                    <ul class="small muted" style="margin:4px 0 8px 16px;">
+                                        <li><strong>shopping habit:</strong> habit-value-1 <em>(basis: brief lists constrained budget)</em></li>
+                                    </ul>
+                                    <p class="small"><strong>Responses:</strong></p>
+                                    <ul class="small" style="margin:4px 0 0 16px;">
+                                        
+                                        <li>
+                                            Clarity:
+                                            <strong class="tnum">4/5</strong>
+                                            — reason clarity
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                        <li>
+                                            Relevance:
+                                            <strong class="tnum">5/5</strong>
+                                            — reason relevance
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                    </ul>
+                                </details>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row">p02</th>
+                            <td>segment-2</td>
+                            <td>neutral</td>
+                            <td>casual</td>
+                            <td>
+                                <details>
+                                    <summary class="link" style="cursor:pointer;">Profile &amp; answers</summary>
+                                    <p class="small" style="margin-top:6px;"><strong>Needs:</strong> need-2</p>
+                                    <p class="small"><strong>Supplied (from brief):</strong> location: Austin, USA; pain: plastic waste</p>
+                                    <ul class="small muted" style="margin:4px 0 8px 16px;">
+                                        <li><strong>shopping habit:</strong> habit-value-2 <em>(basis: brief lists constrained budget)</em></li>
+                                    </ul>
+                                    <p class="small"><strong>Responses:</strong></p>
+                                    <ul class="small" style="margin:4px 0 0 16px;">
+                                        
+                                        <li>
+                                            Clarity:
+                                            <strong class="tnum">4/5</strong>
+                                            — reason clarity
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                        <li>
+                                            Relevance:
+                                            <strong class="tnum">5/5</strong>
+                                            — reason relevance
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                    </ul>
+                                </details>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row">p03</th>
+                            <td>segment-3</td>
+                            <td>receptive</td>
+                            <td>regular</td>
+                            <td>
+                                <details>
+                                    <summary class="link" style="cursor:pointer;">Profile &amp; answers</summary>
+                                    <p class="small" style="margin-top:6px;"><strong>Needs:</strong> need-3</p>
+                                    <p class="small"><strong>Supplied (from brief):</strong> location: Austin, USA; pain: lack of time</p>
+                                    <ul class="small muted" style="margin:4px 0 8px 16px;">
+                                        <li><strong>shopping habit:</strong> habit-value-3 <em>(basis: brief lists constrained budget)</em></li>
+                                    </ul>
+                                    <p class="small"><strong>Responses:</strong></p>
+                                    <ul class="small" style="margin:4px 0 0 16px;">
+                                        
+                                        <li>
+                                            Clarity:
+                                            <strong class="tnum">4/5</strong>
+                                            — reason clarity
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                        <li>
+                                            Relevance:
+                                            <strong class="tnum">5/5</strong>
+                                            — reason relevance
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                    </ul>
+                                </details>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row">p04</th>
+                            <td>segment-4</td>
+                            <td>skeptical</td>
+                            <td>expert</td>
+                            <td>
+                                <details>
+                                    <summary class="link" style="cursor:pointer;">Profile &amp; answers</summary>
+                                    <p class="small" style="margin-top:6px;"><strong>Needs:</strong> need-4</p>
+                                    <p class="small"><strong>Supplied (from brief):</strong> location: Austin, USA; pain: plastic waste</p>
+                                    <ul class="small muted" style="margin:4px 0 8px 16px;">
+                                        <li><strong>shopping habit:</strong> habit-value-4 <em>(basis: brief lists constrained budget)</em></li>
+                                    </ul>
+                                    <p class="small"><strong>Responses:</strong></p>
+                                    <ul class="small" style="margin:4px 0 0 16px;">
+                                        
+                                        <li>
+                                            Clarity:
+                                            <strong class="tnum">4/5</strong>
+                                            — reason clarity
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                        <li>
+                                            Relevance:
+                                            <strong class="tnum">5/5</strong>
+                                            — reason relevance
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                    </ul>
+                                </details>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row">p05</th>
+                            <td>segment-5</td>
+                            <td>neutral</td>
+                            <td>new</td>
+                            <td>
+                                <details>
+                                    <summary class="link" style="cursor:pointer;">Profile &amp; answers</summary>
+                                    <p class="small" style="margin-top:6px;"><strong>Needs:</strong> need-5</p>
+                                    <p class="small"><strong>Supplied (from brief):</strong> location: Austin, USA; pain: lack of time</p>
+                                    <ul class="small muted" style="margin:4px 0 8px 16px;">
+                                        <li><strong>shopping habit:</strong> habit-value-5 <em>(basis: brief lists constrained budget)</em></li>
+                                    </ul>
+                                    <p class="small"><strong>Responses:</strong></p>
+                                    <ul class="small" style="margin:4px 0 0 16px;">
+                                        
+                                        <li>
+                                            Clarity:
+                                            <strong class="tnum">4/5</strong>
+                                            — reason clarity
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                        <li>
+                                            Relevance:
+                                            <strong class="tnum">5/5</strong>
+                                            — reason relevance
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                    </ul>
+                                </details>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row">p06</th>
+                            <td>segment-6</td>
+                            <td>receptive</td>
+                            <td>casual</td>
+                            <td>
+                                <details>
+                                    <summary class="link" style="cursor:pointer;">Profile &amp; answers</summary>
+                                    <p class="small" style="margin-top:6px;"><strong>Needs:</strong> need-6</p>
+                                    <p class="small"><strong>Supplied (from brief):</strong> location: Austin, USA; pain: plastic waste</p>
+                                    <ul class="small muted" style="margin:4px 0 8px 16px;">
+                                        <li><strong>shopping habit:</strong> habit-value-6 <em>(basis: brief lists constrained budget)</em></li>
+                                    </ul>
+                                    <p class="small"><strong>Responses:</strong></p>
+                                    <ul class="small" style="margin:4px 0 0 16px;">
+                                        
+                                        <li>
+                                            Clarity:
+                                            <strong class="tnum">4/5</strong>
+                                            — reason clarity
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                        <li>
+                                            Relevance:
+                                            <strong class="tnum">5/5</strong>
+                                            — reason relevance
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                    </ul>
+                                </details>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row">p07</th>
+                            <td>segment-7</td>
+                            <td>skeptical</td>
+                            <td>regular</td>
+                            <td>
+                                <details>
+                                    <summary class="link" style="cursor:pointer;">Profile &amp; answers</summary>
+                                    <p class="small" style="margin-top:6px;"><strong>Needs:</strong> need-7</p>
+                                    <p class="small"><strong>Supplied (from brief):</strong> location: Austin, USA; pain: lack of time</p>
+                                    <ul class="small muted" style="margin:4px 0 8px 16px;">
+                                        <li><strong>shopping habit:</strong> habit-value-7 <em>(basis: brief lists constrained budget)</em></li>
+                                    </ul>
+                                    <p class="small"><strong>Responses:</strong></p>
+                                    <ul class="small" style="margin:4px 0 0 16px;">
+                                        
+                                        <li>
+                                            Clarity:
+                                            <strong class="tnum">4/5</strong>
+                                            — reason clarity
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                        <li>
+                                            Relevance:
+                                            <strong class="tnum">5/5</strong>
+                                            — reason relevance
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                    </ul>
+                                </details>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row">p08</th>
+                            <td>segment-8</td>
+                            <td>neutral</td>
+                            <td>expert</td>
+                            <td>
+                                <details>
+                                    <summary class="link" style="cursor:pointer;">Profile &amp; answers</summary>
+                                    <p class="small" style="margin-top:6px;"><strong>Needs:</strong> need-8</p>
+                                    <p class="small"><strong>Supplied (from brief):</strong> location: Austin, USA; pain: plastic waste</p>
+                                    <ul class="small muted" style="margin:4px 0 8px 16px;">
+                                        <li><strong>shopping habit:</strong> habit-value-8 <em>(basis: brief lists constrained budget)</em></li>
+                                    </ul>
+                                    <p class="small"><strong>Responses:</strong></p>
+                                    <ul class="small" style="margin:4px 0 0 16px;">
+                                        
+                                        <li>
+                                            Clarity:
+                                            <strong class="tnum">4/5</strong>
+                                            — reason clarity
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                        <li>
+                                            Relevance:
+                                            <strong class="tnum">5/5</strong>
+                                            — reason relevance
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                    </ul>
+                                </details>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row">p09</th>
+                            <td>segment-9</td>
+                            <td>receptive</td>
+                            <td>new</td>
+                            <td>
+                                <details>
+                                    <summary class="link" style="cursor:pointer;">Profile &amp; answers</summary>
+                                    <p class="small" style="margin-top:6px;"><strong>Needs:</strong> need-9</p>
+                                    <p class="small"><strong>Supplied (from brief):</strong> location: Austin, USA; pain: lack of time</p>
+                                    <ul class="small muted" style="margin:4px 0 8px 16px;">
+                                        <li><strong>shopping habit:</strong> habit-value-9 <em>(basis: brief lists constrained budget)</em></li>
+                                    </ul>
+                                    <p class="small"><strong>Responses:</strong></p>
+                                    <ul class="small" style="margin:4px 0 0 16px;">
+                                        
+                                        <li>
+                                            Clarity:
+                                            <strong class="tnum">4/5</strong>
+                                            — reason clarity
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                        <li>
+                                            Relevance:
+                                            <strong class="tnum">5/5</strong>
+                                            — reason relevance
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                    </ul>
+                                </details>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row">p10</th>
+                            <td>segment-10</td>
+                            <td>skeptical</td>
+                            <td>casual</td>
+                            <td>
+                                <details>
+                                    <summary class="link" style="cursor:pointer;">Profile &amp; answers</summary>
+                                    <p class="small" style="margin-top:6px;"><strong>Needs:</strong> need-10</p>
+                                    <p class="small"><strong>Supplied (from brief):</strong> location: Austin, USA; pain: plastic waste</p>
+                                    <ul class="small muted" style="margin:4px 0 8px 16px;">
+                                        <li><strong>shopping habit:</strong> habit-value-10 <em>(basis: brief lists constrained budget)</em></li>
+                                    </ul>
+                                    <p class="small"><strong>Responses:</strong></p>
+                                    <ul class="small" style="margin:4px 0 0 16px;">
+                                        
+                                        <li>
+                                            Clarity:
+                                            <strong class="tnum">4/5</strong>
+                                            — reason clarity
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                        <li>
+                                            Relevance:
+                                            <strong class="tnum">5/5</strong>
+                                            — reason relevance
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                    </ul>
+                                </details>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row">p11</th>
+                            <td>segment-11</td>
+                            <td>neutral</td>
+                            <td>regular</td>
+                            <td>
+                                <details>
+                                    <summary class="link" style="cursor:pointer;">Profile &amp; answers</summary>
+                                    <p class="small" style="margin-top:6px;"><strong>Needs:</strong> need-11</p>
+                                    <p class="small"><strong>Supplied (from brief):</strong> location: Austin, USA; pain: lack of time</p>
+                                    <ul class="small muted" style="margin:4px 0 8px 16px;">
+                                        <li><strong>shopping habit:</strong> habit-value-11 <em>(basis: brief lists constrained budget)</em></li>
+                                    </ul>
+                                    <p class="small"><strong>Responses:</strong></p>
+                                    <ul class="small" style="margin:4px 0 0 16px;">
+                                        
+                                        <li>
+                                            Clarity:
+                                            <strong class="tnum">4/5</strong>
+                                            — reason clarity
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                        <li>
+                                            Relevance:
+                                            <strong class="tnum">5/5</strong>
+                                            — reason relevance
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                    </ul>
+                                </details>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row">p12</th>
+                            <td>segment-12</td>
+                            <td>receptive</td>
+                            <td>expert</td>
+                            <td>
+                                <details>
+                                    <summary class="link" style="cursor:pointer;">Profile &amp; answers</summary>
+                                    <p class="small" style="margin-top:6px;"><strong>Needs:</strong> need-12</p>
+                                    <p class="small"><strong>Supplied (from brief):</strong> location: Austin, USA; pain: plastic waste</p>
+                                    <ul class="small muted" style="margin:4px 0 8px 16px;">
+                                        <li><strong>shopping habit:</strong> habit-value-12 <em>(basis: brief lists constrained budget)</em></li>
+                                    </ul>
+                                    <p class="small"><strong>Responses:</strong></p>
+                                    <ul class="small" style="margin:4px 0 0 16px;">
+                                        
+                                        <li>
+                                            Clarity:
+                                            <strong class="tnum">4/5</strong>
+                                            — reason clarity
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                        <li>
+                                            Relevance:
+                                            <strong class="tnum">5/5</strong>
+                                            — reason relevance
+                                            <a class="ref" href="#obs-o1">o1</a> 
+                                        </li>
+                                        
+                                    </ul>
+                                </details>
+                            </td>
+                        </tr>
+                        
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </details>
+    </section>
+    
+
+    
+    <section class="report__section" aria-labelledby="h-provenance" id="provenance">
+        <details class="disclosure">
+            <summary>Methodology &amp; run provenance</summary>
+            <div class="disclosure__body small muted">
+                <p>Model nvidia/nemotron-3.5-lightning:free · pipeline v0.1.0 · revision 3eb56e5 · 17 provider calls</p>
+                <p style="margin-top:4px;">Schema v0.1.0 · started 2026-09-06 14:18:31 UTC</p>
+                
+                <ul style="margin:8px 0 0 18px;">
+                    <li>synthetic-panel dispersion, not population CI (n=24)</li><li>experimental screening signal; not a replacement for human research</li>
+                </ul>
                 
             </div>
-            
-            <p class="mt-1 text-[12px] text-slate-600 dark:text-slate-300">mean <strong class="text-slate-900">4.00</strong> · median 4.0 · sd 0.00 · n=12</p>
-            <div class="mt-2 h-2 rounded bg-slate-200 dark:bg-slate-700" role="img" aria-label="clarity mean 4.00 of 5, 12 ratings">
-                <div class="h-2 rounded bg-sky-700" style="width: 80.0%"></div>
-            </div>
-            
-        </article>
-    
-    </div>
-    <p class="text-[12px] text-slate-500 dark:text-slate-400 mt-2">Synthetic-panel dispersion, not a population confidence interval.</p>
-</section>
+        </details>
+    </section>
 
+    <p class="report__section"><a class="link" href="/">Evaluate another ad</a></p>
+</div>
 
-<section aria-labelledby="h-themes">
-    <h2 id="h-themes" class="text-[15px] font-semibold my-3">Themes</h2>
-    
-    <ul class="grid gap-3 md:grid-cols-2">
-    
-        <li class="bg-white dark:bg-slate-800 border rounded-lg p-3 border-slate-200 dark:border-slate-700">
-            <p><span class="text-[12px] font-semibold px-2 py-0.5 rounded-full border text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-700">positive</span>
-            <strong class="ml-1">clear</strong></p>
-            <p class="mt-1 text-slate-600 dark:text-slate-300">headline is clear</p>
-            <p class="mt-1 text-[12px] text-slate-500 dark:text-slate-400">personas: p01 · evidence: o1</p>
-        </li>
-    
-    </ul>
-    
-</section>
-
-
-
-<section aria-labelledby="h-extract">
-    <h2 id="h-extract" class="text-[15px] font-semibold my-3">Structured extraction</h2>
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-x-auto">
-    <table class="w-full text-left">
-        <thead><tr class="border-b border-slate-200 dark:border-slate-700 text-[12px] text-slate-500 dark:text-slate-400">
-            <th scope="col" class="px-3 py-2 font-medium">Field</th><th scope="col" class="px-3 py-2 font-medium">Value</th><th scope="col" class="px-3 py-2 font-medium">Evidence</th>
-        </tr></thead>
-        <tbody>
-        
-        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 ">
-            <th scope="row" class="px-3 py-2 font-medium whitespace-nowrap">visible_text</th>
-            <td class="px-3 py-2">Drink More</td>
-            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">Drink More</td>
-        </tr>
-        
-        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 ">
-            <th scope="row" class="px-3 py-2 font-medium whitespace-nowrap">price</th>
-            <td class="px-3 py-2"><span class="text-[12px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-0.5">unknown</span></td>
-            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">—</td>
-        </tr>
-        
-        </tbody>
-    </table>
-    </div>
-    <p class="text-[12px] text-slate-600 dark:text-slate-300 mt-2">Strategies: emotional_appeal</p>
-</section>
-
-
-
-
-<section aria-labelledby="h-personas">
-    <h2 id="h-personas" class="text-[15px] font-semibold my-3">Coverage personas (12)</h2>
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-x-auto">
-    <table class="w-full text-left" id="persona-table">
-        <thead><tr class="border-b border-slate-200 dark:border-slate-700 text-[12px] text-slate-500 dark:text-slate-400">
-            <th scope="col" class="px-3 py-2 font-medium">ID</th><th scope="col" class="px-3 py-2 font-medium">Segment</th><th scope="col" class="px-3 py-2 font-medium">Stance</th><th scope="col" class="px-3 py-2 font-medium">Familiarity</th><th scope="col" class="px-3 py-2 font-medium">Needs</th><th scope="col" class="px-3 py-2 font-medium">Detail</th>
-        </tr></thead>
-        <tbody>
-        
-        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
-            <td class="px-3 py-2 font-medium whitespace-nowrap">p01</td>
-            <td class="px-3 py-2">segment-1</td>
-            <td class="px-3 py-2 whitespace-nowrap">skeptical</td>
-            <td class="px-3 py-2 whitespace-nowrap">new</td>
-            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-1</td>
-            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
-                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: lack of time</p>
-                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-1 (basis: brief lists constrained budget)</li></ul>
-            </details></td>
-        </tr>
-        
-        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
-            <td class="px-3 py-2 font-medium whitespace-nowrap">p02</td>
-            <td class="px-3 py-2">segment-2</td>
-            <td class="px-3 py-2 whitespace-nowrap">neutral</td>
-            <td class="px-3 py-2 whitespace-nowrap">casual</td>
-            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-2</td>
-            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
-                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: plastic waste</p>
-                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-2 (basis: brief lists constrained budget)</li></ul>
-            </details></td>
-        </tr>
-        
-        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
-            <td class="px-3 py-2 font-medium whitespace-nowrap">p03</td>
-            <td class="px-3 py-2">segment-3</td>
-            <td class="px-3 py-2 whitespace-nowrap">receptive</td>
-            <td class="px-3 py-2 whitespace-nowrap">regular</td>
-            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-3</td>
-            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
-                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: lack of time</p>
-                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-3 (basis: brief lists constrained budget)</li></ul>
-            </details></td>
-        </tr>
-        
-        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
-            <td class="px-3 py-2 font-medium whitespace-nowrap">p04</td>
-            <td class="px-3 py-2">segment-4</td>
-            <td class="px-3 py-2 whitespace-nowrap">skeptical</td>
-            <td class="px-3 py-2 whitespace-nowrap">expert</td>
-            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-4</td>
-            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
-                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: plastic waste</p>
-                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-4 (basis: brief lists constrained budget)</li></ul>
-            </details></td>
-        </tr>
-        
-        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
-            <td class="px-3 py-2 font-medium whitespace-nowrap">p05</td>
-            <td class="px-3 py-2">segment-5</td>
-            <td class="px-3 py-2 whitespace-nowrap">neutral</td>
-            <td class="px-3 py-2 whitespace-nowrap">new</td>
-            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-5</td>
-            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
-                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: lack of time</p>
-                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-5 (basis: brief lists constrained budget)</li></ul>
-            </details></td>
-        </tr>
-        
-        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
-            <td class="px-3 py-2 font-medium whitespace-nowrap">p06</td>
-            <td class="px-3 py-2">segment-6</td>
-            <td class="px-3 py-2 whitespace-nowrap">receptive</td>
-            <td class="px-3 py-2 whitespace-nowrap">casual</td>
-            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-6</td>
-            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
-                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: plastic waste</p>
-                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-6 (basis: brief lists constrained budget)</li></ul>
-            </details></td>
-        </tr>
-        
-        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
-            <td class="px-3 py-2 font-medium whitespace-nowrap">p07</td>
-            <td class="px-3 py-2">segment-7</td>
-            <td class="px-3 py-2 whitespace-nowrap">skeptical</td>
-            <td class="px-3 py-2 whitespace-nowrap">regular</td>
-            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-7</td>
-            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
-                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: lack of time</p>
-                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-7 (basis: brief lists constrained budget)</li></ul>
-            </details></td>
-        </tr>
-        
-        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
-            <td class="px-3 py-2 font-medium whitespace-nowrap">p08</td>
-            <td class="px-3 py-2">segment-8</td>
-            <td class="px-3 py-2 whitespace-nowrap">neutral</td>
-            <td class="px-3 py-2 whitespace-nowrap">expert</td>
-            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-8</td>
-            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
-                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: plastic waste</p>
-                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-8 (basis: brief lists constrained budget)</li></ul>
-            </details></td>
-        </tr>
-        
-        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
-            <td class="px-3 py-2 font-medium whitespace-nowrap">p09</td>
-            <td class="px-3 py-2">segment-9</td>
-            <td class="px-3 py-2 whitespace-nowrap">receptive</td>
-            <td class="px-3 py-2 whitespace-nowrap">new</td>
-            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-9</td>
-            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
-                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: lack of time</p>
-                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-9 (basis: brief lists constrained budget)</li></ul>
-            </details></td>
-        </tr>
-        
-        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
-            <td class="px-3 py-2 font-medium whitespace-nowrap">p10</td>
-            <td class="px-3 py-2">segment-10</td>
-            <td class="px-3 py-2 whitespace-nowrap">skeptical</td>
-            <td class="px-3 py-2 whitespace-nowrap">casual</td>
-            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-10</td>
-            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
-                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: plastic waste</p>
-                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-10 (basis: brief lists constrained budget)</li></ul>
-            </details></td>
-        </tr>
-        
-        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
-            <td class="px-3 py-2 font-medium whitespace-nowrap">p11</td>
-            <td class="px-3 py-2">segment-11</td>
-            <td class="px-3 py-2 whitespace-nowrap">neutral</td>
-            <td class="px-3 py-2 whitespace-nowrap">regular</td>
-            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-11</td>
-            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
-                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: lack of time</p>
-                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-11 (basis: brief lists constrained budget)</li></ul>
-            </details></td>
-        </tr>
-        
-        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
-            <td class="px-3 py-2 font-medium whitespace-nowrap">p12</td>
-            <td class="px-3 py-2">segment-12</td>
-            <td class="px-3 py-2 whitespace-nowrap">receptive</td>
-            <td class="px-3 py-2 whitespace-nowrap">expert</td>
-            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">need-12</td>
-            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
-                <p class="text-[12px] mt-1"><strong>Supplied:</strong> location: Austin, USA; pain: plastic waste</p>
-                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4"><li>shopping_habit: habit-value-12 (basis: brief lists constrained budget)</li></ul>
-            </details></td>
-        </tr>
-        
-        </tbody>
-    </table>
-    </div>
-</section>
-
-
-
-<section aria-labelledby="h-recs">
-    <h2 id="h-recs" class="text-[15px] font-semibold my-3">Evidence-linked recommendations</h2>
-    <p class="text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">None.</p>
-</section>
-<details class="text-[12px] text-slate-500 dark:text-slate-400">
-    <summary>Run provenance</summary>
-    <p class="mt-1">model nvidia/nemotron-3.5-lightning:free · pipeline v0.1.0 · revision 7365682 · 17 calls · eval eval-b36ad2d579d8</p>
-    <ul class="list-disc pl-5 mt-1"><li>synthetic-panel dispersion, not population CI (n=12)</li><li>experimental screening signal; not a replacement for human research</li></ul>
-</details>
-
-<p class="mt-4"><a href="/" class="underline text-sky-700 dark:text-sky-300">Evaluate another ad</a></p>
 
 </main>
-<footer class="mx-auto max-w-6xl px-4 pb-8 text-[12px] text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700 pt-4">
+<footer class="shell-footer">
     Experimental creative-screening signal — not a replacement for human research. No CTR, sales, or causal-lift claims.
 </footer>
-<script>
-    (function () {
-        const btn = document.getElementById('theme-toggle');
-        const sync = () => btn.setAttribute('aria-pressed', document.documentElement.classList.contains('dark'));
-        sync();
-        btn.addEventListener('click', () => {
-            const dark = document.documentElement.classList.toggle('dark');
-            try { localStorage.setItem('adtestpro-theme', dark ? 'dark' : 'light'); } catch (e) {}
-            sync();
-        });
-    })();
-</script>
 </body>
 </html>

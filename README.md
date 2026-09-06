@@ -1,8 +1,8 @@
 # AdTestPro — Synthetic Focus Groups for Ad Creatives
 
-Upload an ad. Get a coverage panel of 12 AI respondents, structured extraction of what's
-actually in the creative, dimension scores with disagreement flags, and evidence-linked
-recommendations — in about a minute, for cents per run.
+Upload an ad. Get a coverage panel of up to 25 AI respondents (default 12), structured
+extraction of what's actually in the creative, dimension scores with disagreement flags,
+and evidence-linked recommendations — in about a minute, for cents per run.
 
 > **Honest label:** produces schema-valid, evidence-linked ad evaluations. This is an
 > experimental creative-screening signal — not a replacement for human research, and it
@@ -16,7 +16,7 @@ evidence-grounded judgments and **Python computes every number**. The model neve
 a final score.
 
 ```text
-Brief → 12 constrained personas → 1 multimodal extraction → independent answers
+Brief → N constrained personas (1–25, default 12) → 1 multimodal extraction → independent answers
       → deterministic aggregates → theme synthesis → evidence critic → result
 ```
 
@@ -45,7 +45,9 @@ uvicorn app.main:app --reload
 ```
 
 Open `http://localhost:8000/`, fill the brief, upload a PNG/JPEG (≤15MB), pick up to 3
-questions, submit. JSON API at `POST /api/evaluations`; contracts in `/openapi.json`.
+questions, set the panel size (1–25 personas, default 12 — larger panels cost and run
+linearly longer), submit. JSON API at `POST /api/evaluations` (optional `persona_count`
+form field); contracts in `/openapi.json`.
 
 **OpenRouter:**
 
@@ -58,22 +60,32 @@ ADTESTPRO_MODEL=openai/gpt-4o-mini   # must be vision-capable
 `GET /ready` reports `{"ready": true}` when configured; `GET /health` is the offline
 liveness probe. ~$0.05–0.15 per 12-persona × 3-question run.
 
+**Model hedge (optional):** set `ADTESTPRO_MODELS=modelA,modelB` to rotate a pool of
+models across personas during scoring — each persona answers via `pool[i % len(pool)]`,
+so a single vendor's priors can't dominate every judgment. Extraction, synthesis, and
+the critic stay on the primary `ADTESTPRO_MODEL`; per-call models are recorded in
+`trace.calls[].model`, and disagreeing scores widen ranges rather than average away.
+
 ## UI conventions
 
-Light, dense operator UI (`app/templates/`): shared `layout.html` (header, breadcrumb,
-readiness badge, footer disclaimer); two-column brief form with optional targeting in a
-collapsed `<details>` and a sticky action bar; results ordered Scores → Themes →
-Extraction → Personas → Provenance. Every score shows scale + n + dispersion;
-disagreement is badged, never averaged away; minority themes auto-surface; `unknown`
-renders as a chip, never blank. Rendered snapshots: `assets/*.snapshot.html`
-(screenshots blocked: no browser engine in this environment).
+Professional B2B operator UI (`app/templates/` + `app/static/app.css` design system).
+No frontend framework, no CDN, no remote fonts: tokens and components live in one
+checked-in stylesheet (light/dark via CSS variables), behavior in one `app.js`.
+Shell = brand + primary nav (Evaluate, API docs) + provider readiness + theme toggle;
+every page has one `<h1>`, a skip link, and labelled scrollable tables.
+Flow: guided three-step form (Creative → Audience → Research setup) with local image
+preview, field-level validation parity between browser and server, an honest pending
+state (no fake progress stages), and a decision-ready report ordered
+Context → At a glance → Recommended actions → Dimension scores (with 1–5 distributions)
+→ Themes (evidence-linked) → Extraction → Panel details → Provenance. Rendered
+snapshots: `assets/*.snapshot.html` (screenshots blocked: no browser engine here).
 
 ## Docs & rigor
 
 - `benchmarks/README.md` — PersonaBench / AdExtract-60 / AdScore-24 protocols, gate
   thresholds, and what's blocked on human data
 - `benchmarks/evaluate.py` — metrics + deterministic replay (`replay-cached`, `replay-fresh`)
-- 49 offline tests (`pytest tests/`) run the full pipeline on fixtures with zero network
+- 83 offline tests (`pytest tests/`) run the full pipeline on fixtures with zero network
 
 ## Research grounding
 

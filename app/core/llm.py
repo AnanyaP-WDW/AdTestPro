@@ -48,11 +48,23 @@ def _timeout_s() -> float:
         return 60.0
 
 
-def _model() -> str:
+def model_pool(client: Any = None) -> list[str]:
+    """Primary-first model pool: ADTESTPRO_MODELS (comma-separated) rotates judgment calls.
+
+    ponytail: fallback is the single ADTESTPRO_MODEL, so unset pool = today's behavior.
+    Injected clients (offline tests) tolerate missing config, matching complete_structured.
+    """
+    raw = os.getenv("ADTESTPRO_MODELS", "").strip()
+    if raw:
+        pool = [m.strip() for m in raw.split(",") if m.strip()]
+        if pool:
+            return pool
     model = os.getenv("ADTESTPRO_MODEL", "").strip()
-    if not model:
-        raise LLMConfigError("ADTESTPRO_MODEL is not set (exact model ID required)")
-    return model
+    if model:
+        return [model]
+    if client is not None:
+        return ["injected-fake"]
+    raise LLMConfigError("ADTESTPRO_MODEL is not set (exact model ID required)")
 
 
 _client: Any = None

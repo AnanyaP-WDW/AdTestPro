@@ -98,7 +98,8 @@ def extraction_payload() -> dict:
     }
 
 
-def full_fake(question_ids=("clarity", "relevance"), ratings=(4, 5), split_panel=False) -> FakeClient:
+def full_fake(question_ids=("clarity", "relevance"), ratings=(4, 5), split_panel=False,
+              n_personas: int = 12) -> FakeClient:
     """Routes by system prompt; deterministic canned payloads."""
     state = {"respond_n": 0}
 
@@ -107,7 +108,7 @@ def full_fake(question_ids=("clarity", "relevance"), ratings=(4, 5), split_panel
         user = json.dumps(kw["messages"][1])
         if "respondent profiles" in system:
             return {"coverage_label": "coverage_panel",
-                    "personas": [persona_payload(i) for i in range(12)]}
+                    "personas": [persona_payload(i) for i in range(n_personas)]}
         if "observable facts" in system:
             return extraction_payload()
         if "AS the given persona" in system:
@@ -458,3 +459,99 @@ def test_s5_cancellation_propagates(monkeypatch):
 
     with pytest.raises(asyncio.CancelledError):
         run(main())
+
+
+# ---------------- model pool rotation (respond stage) ----------------
+
+def test_model_pool_rotates_respond_by_persona_index(monkeypatch):
+    import re
+
+    monkeypatch.setenv("ADTESTPRO_MODEL", "model-a")
+    monkeypatch.setenv("ADTESTPRO_MODELS", "model-a, model-b")
+    fake = full_fake()
+    seen: dict[str, str] = {}
+    base_handler = fake.handler
+
+    def handler(kw):
+        if "AS the given persona" in kw["messages"][0]["content"]:
+            m = re.search(r"You are persona (p\d+)", kw["messages"][1]["content"])
+            seen[m.group(1)] = kw["model"]
+        return base_handler(kw)
+
+    fake.handler = handler
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"], client=fake))
+    assert res.status in ("complete", "complete_high_disagreement")
+    assert len(seen) == 12
+    for i in range(12):
+        assert seen[f"p{i + 1:02d}"] == ["model-a", "model-b"][i % 2]
+    # per-call receipts record the rotation; non-respond stages stay on the primary
+    respond_models = {c.model for c in res.trace.calls if c.stage == "respond"}
+    assert respond_models == {"model-a", "model-b"}
+    assert {c.model for c in res.trace.calls if c.stage != "respond"} == {"model-a"}
+
+
+def test_respond_uses_single_model_when_pool_unset(monkeypatch):
+    monkeypatch.setenv("ADTESTPRO_MODEL", "model-a")
+    monkeypatch.delenv("ADTESTPRO_MODELS", raising=False)
+    fake = full_fake()
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"], client=fake))
+    assert res.status in ("complete", "complete_high_disagreement")
+    assert {c.model for c in res.trace.calls} == {"model-a"}
+
+
+# ---------------- persona count ----------------
+
+def test_persona_count_25_happy_path():
+    fake = full_fake(n_personas=25)
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"],
+                           client=fake, persona_count=25))
+    assert res.status in ("complete", "complete_high_disagreement")
+    ids = [p.id for p in res.personas.personas]
+    assert len(ids) == 25
+    assert ids == [f"p{i + 1:02d}" for i in range(25)]
+
+
+def test_persona_count_clamped_to_max():
+    fake = full_fake(n_personas=25)
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"],
+                           client=fake, persona_count=999))
+    assert len(res.personas.personas) == 25
+
+
+def test_persona_count_default_is_12():
+    fake = full_fake()
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"], client=fake))
+    assert len(res.personas.personas) == 12
+
+
+def test_panel_size_mismatch_repairs_once():
+    fake = full_fake()
+    state = {"personas_calls": 0}
+    base = fake.handler
+
+    def handler(kw):
+        out = base(kw)
+        if isinstance(out, dict) and "personas" in out:
+            state["personas_calls"] += 1
+            if state["personas_calls"] == 1:
+                return {"coverage_label": "coverage_panel",
+                        "personas": [persona_payload(i) for i in range(11)]}
+        return out
+
+    fake.handler = handler
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"], client=fake))
+    assert any("panel size 11" in r for r in res.trace.repairs)
+    assert len(res.personas.personas) == 12
+
+
+def test_panel_size_persistent_mismatch_fails_persona_invalid():
+    fake = full_fake(n_personas=11)  # repair also returns the wrong size
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"], client=fake))
+    assert res.status == "persona_invalid"

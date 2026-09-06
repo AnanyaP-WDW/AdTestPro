@@ -7,7 +7,7 @@ import pytest
 from pydantic import BaseModel
 
 from app.core import llm
-from app.core.llm import LLMError, LLMOutputError, LLMTimeout, complete_structured
+from app.core.llm import LLMConfigError, LLMError, LLMOutputError, LLMTimeout, complete_structured, model_pool
 from app.core.models import EvaluationTrace
 from tests.fake_client import FakeClient
 
@@ -20,6 +20,31 @@ def _env(monkeypatch):
     monkeypatch.setenv("ADTESTPRO_MODEL", "fake-model-1")
     monkeypatch.setenv("ADTESTPRO_MAX_CONCURRENCY", "2")
     monkeypatch.setenv("ADTESTPRO_TIMEOUT_S", "5")
+
+
+def test_model_pool_parses_multi_with_whitespace(monkeypatch):
+    monkeypatch.setenv("ADTESTPRO_MODEL", "primary")
+    monkeypatch.setenv("ADTESTPRO_MODELS", " a , b ,c, ")
+    assert model_pool() == ["a", "b", "c"]
+
+
+def test_model_pool_falls_back_to_single_model(monkeypatch):
+    monkeypatch.setenv("ADTESTPRO_MODEL", "primary")
+    monkeypatch.delenv("ADTESTPRO_MODELS", raising=False)
+    assert model_pool() == ["primary"]
+
+
+def test_model_pool_blank_pool_falls_back(monkeypatch):
+    monkeypatch.setenv("ADTESTPRO_MODEL", "primary")
+    monkeypatch.setenv("ADTESTPRO_MODELS", "  ,, ")
+    assert model_pool() == ["primary"]
+
+
+def test_model_pool_unset_model_raises(monkeypatch):
+    monkeypatch.delenv("ADTESTPRO_MODEL", raising=False)
+    monkeypatch.delenv("ADTESTPRO_MODELS", raising=False)
+    with pytest.raises(LLMConfigError):
+        model_pool()
 
 
 def test_success_records_call_metadata(monkeypatch):

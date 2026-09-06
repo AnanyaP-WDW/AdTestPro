@@ -5,170 +5,303 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AdTestPro — New evaluation</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = { darkMode: 'class' };
-        // Pre-paint from saved choice or OS preference (no flash).
+        /* Pre-paint theme from saved choice or OS preference (avoids flash). */
         try {
-            const saved = localStorage.getItem('adtestpro-theme');
+            var saved = localStorage.getItem('adtestpro-theme');
             if (saved === 'dark' || (!saved && matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.classList.add('dark');
             }
         } catch (e) {}
     </script>
-    <style>
-        html.dark { color-scheme: dark; }
-        html.dark input, html.dark select, html.dark textarea {
-            background-color: #1e293b; border-color: #475569; color: #f1f5f9;
-        }
-        :focus-visible { outline: 2px solid #0369a1; outline-offset: 2px; }
-        html.dark :focus-visible { outline-color: #38bdf8; }
-        @media (max-width: 390px) { .no-hscroll { overflow-x: hidden; } }
-        details > summary { cursor: pointer; }
-    </style>
+    <link rel="stylesheet" href="/static/app.css">
+    <script src="/static/app.js" defer></script>
 </head>
-<body class="bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen text-[13px] no-hscroll">
-<header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-    <div class="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
-        <a href="/" class="font-semibold text-[15px] text-sky-800 dark:text-sky-300">AdTestPro</a>
-        <span class="text-slate-400" aria-hidden="true">/</span>
-        <nav aria-label="Breadcrumb" class="text-slate-600 dark:text-slate-300">New evaluation</nav>
-        <span class="ml-auto text-[12px] px-2 py-1 rounded-full border text-emerald-700 bg-emerald-50 border-emerald-300" role="status">● ready</span>
-        <button type="button" id="theme-toggle" aria-pressed="false" aria-label="Toggle dark mode" title="Toggle dark mode"
-                class="min-w-[36px] min-h-[36px] px-2 rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300">◐</button>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="shell-header">
+    <div class="shell-header__bar">
+        <a href="/" class="brand" aria-label="AdTestPro home">
+            <span class="brand__mark" aria-hidden="true">A</span>
+            <span class="brand__name">AdTestPro</span>
+            <span class="brand__tag">Creative screening</span>
+        </a>
+        <nav class="shell-nav" aria-label="Primary">
+            <a href="/" aria-current="page">Evaluate</a>
+            <a href="/docs" >API docs</a>
+        </nav>
+        <div class="shell-header__end">
+            
+            <span class="readiness readiness--ok" role="status"><span class="readiness__dot" aria-hidden="true"></span>Provider ready</span>
+            
+            <button type="button" id="theme-toggle" aria-pressed="false" aria-label="Toggle dark mode" class="theme-toggle">◐</button>
+        </div>
     </div>
 </header>
-<main class="mx-auto max-w-6xl px-4 py-6">
+<div class="page-header">
+    <div>
+        <nav class="crumbs" aria-label="Breadcrumb"><span aria-current="page">Evaluate</span></nav>
+        <h1>Evaluate an ad creative</h1>
+        <p class="page-header__sub">Screen one creative against a coverage panel. Typical run: about a minute, cents per evaluation.</p>
+    </div>
+</div>
+<main id="main">
     
-<form method="post" action="/evaluate" enctype="multipart/form-data" id="eval-form" class="grid gap-4 lg:grid-cols-2">
-    <section class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4" aria-labelledby="h-creative">
-        <h2 id="h-creative" class="text-[15px] font-semibold mb-3">1 · Creative</h2>
-        <label for="image" class="block text-[12px] font-medium text-slate-600 dark:text-slate-300 mb-1">Ad image (PNG/JPEG, max 15MB) *</label>
-        <input id="image" name="image" type="file" required accept="image/png, image/jpeg" class="block w-full min-h-[36px] text-slate-700" aria-describedby="file-info">
-        <p class="mt-1 text-[12px] text-slate-500 dark:text-slate-400" id="file-info" role="status"></p>
-        <label for="campaign_objective" class="block text-[12px] font-medium text-slate-600 dark:text-slate-300 mt-3 mb-1">Campaign objective *</label>
-        <input type="text" id="campaign_objective" name="campaign_objective" required maxlength="1000" placeholder="e.g., Test a new ad" class="w-full min-h-[36px] px-3 rounded-md bg-white border border-slate-300 focus:ring-2 focus:ring-sky-600">
-    </section>
 
-    <section class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4" aria-labelledby="h-audience">
-        <h2 id="h-audience" class="text-[15px] font-semibold mb-3">2 · Audience</h2>
-        <label for="product_description" class="block text-[12px] font-medium text-slate-600 dark:text-slate-300 mb-1">Product / service *</label>
-        <textarea id="product_description" name="product_description" required maxlength="2000" rows="2" placeholder="Describe your product..." class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 focus:ring-2 focus:ring-sky-600"></textarea>
-        <div class="grid grid-cols-3 gap-3 mt-3">
-            <div><label for="age_min" class="block text-[12px] font-medium text-slate-600 dark:text-slate-300 mb-1">Min age *</label>
-            <input type="number" id="age_min" name="age_min" required min="13" max="100" value="25" class="w-full min-h-[36px] px-3 rounded-md border border-slate-300"></div>
-            <div><label for="age_max" class="block text-[12px] font-medium text-slate-600 dark:text-slate-300 mb-1">Max age *</label>
-            <input type="number" id="age_max" name="age_max" required min="13" max="100" value="40" class="w-full min-h-[36px] px-3 rounded-md border border-slate-300"></div>
-            <div><label for="location" class="block text-[12px] font-medium text-slate-600 dark:text-slate-300 mb-1">Location *</label>
-            <input type="text" id="location" name="location" required maxlength="200" placeholder="Austin, USA" class="w-full min-h-[36px] px-3 rounded-md border border-slate-300"></div>
-        </div>
-        <div class="grid grid-cols-2 gap-3 mt-3">
-            <div><label for="interests" class="block text-[12px] font-medium text-slate-600 dark:text-slate-300 mb-1">Interests, comma-separated *</label>
-            <input type="text" id="interests" name="interests" required placeholder="running, coffee" class="w-full min-h-[36px] px-3 rounded-md border border-slate-300"></div>
-            <div><label for="pain_points" class="block text-[12px] font-medium text-slate-600 dark:text-slate-300 mb-1">Pain points, comma-separated *</label>
-            <input type="text" id="pain_points" name="pain_points" required placeholder="lack of time" class="w-full min-h-[36px] px-3 rounded-md border border-slate-300"></div>
-        </div>
-        <div class="mt-3"><label for="category_familiarity" class="block text-[12px] font-medium text-slate-600 dark:text-slate-300 mb-1">Category familiarity *</label>
-            <select id="category_familiarity" name="category_familiarity" required class="min-h-[36px] px-3 rounded-md border border-slate-300 bg-white">
-                <option value="new">new</option><option value="casual" selected>casual</option><option value="regular">regular</option><option value="expert">expert</option>
-            </select></div>
-        <details class="mt-3 rounded-md border border-slate-200 dark:border-slate-700 px-3 py-2">
-            <summary class="text-[12px] font-medium text-slate-600 dark:text-slate-300">Advanced targeting (optional)</summary>
-            <div class="grid grid-cols-3 gap-3 py-2">
-                <div><label for="price_sensitivity" class="block text-[12px] text-slate-600 dark:text-slate-300 mb-1">Price sensitivity</label>
-                <select id="price_sensitivity" name="price_sensitivity" class="w-full min-h-[36px] px-2 rounded-md border border-slate-300 bg-white"><option value="">—</option><option value="low">low</option><option value="medium">medium</option><option value="high">high</option></select></div>
-                <div><label for="brand_familiarity" class="block text-[12px] text-slate-600 dark:text-slate-300 mb-1">Brand familiarity</label>
-                <select id="brand_familiarity" name="brand_familiarity" class="w-full min-h-[36px] px-2 rounded-md border border-slate-300 bg-white"><option value="">—</option><option value="unaware">unaware</option><option value="aware">aware</option><option value="customer">customer</option><option value="loyal">loyal</option></select></div>
-                <div><label for="gender_constraint" class="block text-[12px] text-slate-600 dark:text-slate-300 mb-1">Gender constraint</label>
-                <input type="text" id="gender_constraint" name="gender_constraint" maxlength="100" placeholder="Blank = none" class="w-full min-h-[36px] px-2 rounded-md border border-slate-300"></div>
+
+
+
+
+<div id="form-summary" class="error-summary" role="alert" hidden></div>
+
+<form method="post" action="/evaluate" enctype="multipart/form-data" id="eval-form"
+      novalidate>
+    <div class="grid-2">
+        <aside class="step-rail" aria-label="Form sections">
+            <a class="step-rail__item is-active" href="#section-creative"><span class="step-rail__num">1</span> Creative</a>
+            <a class="step-rail__item" href="#section-audience"><span class="step-rail__num">2</span> Audience</a>
+            <a class="step-rail__item" href="#section-config"><span class="step-rail__num">3</span> Research setup</a>
+            <p class="step-rail__hint">Everything is editable before you run. Fields marked * are required.</p>
+        </aside>
+
+        <div class="grid-2__main">
+            <!-- 1 · Creative -->
+            <section class="card" id="section-creative" aria-labelledby="h-creative">
+                <div class="card__body">
+                    <div class="form-section__head">
+                        <span class="form-section__step" aria-hidden="true">Step 1</span>
+                        <h2 class="form-section__title" id="h-creative">Creative</h2>
+                    </div>
+                    <p class="form-section__desc">The image is analyzed once and shown in the report. It is never stored between runs.</p>
+
+                    <div class="field">
+                        <label class="field__label" for="image">Ad image <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
+                        <input class="input" id="image" name="image" type="file" required
+                               accept="image/png, image/jpeg" aria-describedby="file-info image-help">
+                        <p class="field__help" id="image-help">PNG or JPEG, up to 15MB.</p>
+                        <p class="field__error" id="file-info" role="status" hidden></p>
+                        
+                        <figure class="preview" id="image-preview">
+                            <img id="image-preview-img" alt="Selected ad preview">
+                            <figcaption class="preview__meta" id="image-preview-meta"></figcaption>
+                        </figure>
+                    </div>
+
+                    <div class="field">
+                        <label class="field__label" for="campaign_objective">Campaign objective <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
+                        <input class="input" id="campaign_objective" name="campaign_objective" required maxlength="1000"
+                               placeholder="e.g., Drive signups for a launch campaign"
+                               value=""
+                               >
+                        
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2 · Audience -->
+            <section class="card" id="section-audience" aria-labelledby="h-audience">
+                <div class="card__body">
+                    <div class="form-section__head">
+                        <span class="form-section__step" aria-hidden="true">Step 2</span>
+                        <h2 class="form-section__title" id="h-audience">Audience</h2>
+                    </div>
+                    <p class="form-section__desc">Personas are built only from what you supply here — it becomes the report's evidence base.</p>
+
+                    <div class="field">
+                        <label class="field__label" for="product_description">Product / service <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
+                        <textarea class="textarea" id="product_description" name="product_description" required maxlength="2000" rows="2"
+                                  placeholder="Describe the product or service advertised…"
+                                  ></textarea>
+                        
+                    </div>
+
+                    <div class="cols cols-3">
+                        <div class="field">
+                            <label class="field__label" for="age_min">Min age <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
+                            <input class="input" type="number" id="age_min" name="age_min" required min="13" max="100" value="25"
+                                   >
+                            
+                        </div>
+                        <div class="field">
+                            <label class="field__label" for="age_max">Max age <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
+                            <input class="input" type="number" id="age_max" name="age_max" required min="13" max="100" value="40"
+                                   >
+                            
+                        </div>
+                        <div class="field">
+                            <label class="field__label" for="location">Location <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
+                            <input class="input" type="text" id="location" name="location" required maxlength="200"
+                                   placeholder="Austin, USA" value=""
+                                   >
+                            
+                        </div>
+                    </div>
+
+                    <div class="cols cols-2">
+                        <div class="field">
+                            <label class="field__label" for="interests">Interests <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
+                            <input class="input" type="text" id="interests" name="interests" required
+                                   placeholder="running, coffee" value=""
+                                   >
+                            <p class="field__help">Comma-separated; each becomes a coverage slot.</p>
+                            
+                        </div>
+                        <div class="field">
+                            <label class="field__label" for="pain_points">Pain points <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
+                            <input class="input" type="text" id="pain_points" name="pain_points" required
+                                   placeholder="lack of time" value=""
+                                   >
+                            <p class="field__help">Comma-separated; personas rotate emphasis across these.</p>
+                            
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field__label" for="category_familiarity">Category familiarity <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
+                        <select class="select" id="category_familiarity" name="category_familiarity" required>
+                            <option value="new" >New to the category</option>
+                            <option value="casual" selected>Casual</option>
+                            <option value="regular" >Regular</option>
+                            <option value="expert" >Expert</option>
+                        </select>
+                    </div>
+
+                    <details class="disclosure" >
+                        <summary>Advanced targeting (optional)</summary>
+                        <div class="details-disclosure__body disclosure__body">
+                            <div class="cols cols-3">
+                                <div class="field">
+                                    <label class="field__label" for="price_sensitivity">Price sensitivity</label>
+                                    <select class="select" id="price_sensitivity" name="price_sensitivity">
+                                        <option value="">Not specified</option>
+                                        
+                                        <option value="low" >Low</option>
+                                        
+                                        <option value="medium" >Medium</option>
+                                        
+                                        <option value="high" >High</option>
+                                        
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label class="field__label" for="brand_familiarity">Brand familiarity</label>
+                                    <select class="select" id="brand_familiarity" name="brand_familiarity">
+                                        <option value="">Not specified</option>
+                                        
+                                        <option value="unaware" >Unaware</option>
+                                        
+                                        <option value="aware" >Aware</option>
+                                        
+                                        <option value="customer" >Customer</option>
+                                        
+                                        <option value="loyal" >Loyal</option>
+                                        
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label class="field__label" for="gender_constraint">Gender constraint</label>
+                                    <input class="input" type="text" id="gender_constraint" name="gender_constraint" maxlength="100"
+                                           placeholder="Blank = no constraint" value="">
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            </section>
+
+            <!-- 3 · Research setup -->
+            <section class="card" id="section-config" aria-labelledby="h-config">
+                <div class="card__body">
+                    <div class="form-section__head">
+                        <span class="form-section__step" aria-hidden="true">Step 3</span>
+                        <h2 class="form-section__title" id="h-config">Research setup</h2>
+                    </div>
+                    <p class="form-section__desc">Each persona answers independently on a 1–5 scale; disagreement widens ranges rather than averaging away.</p>
+
+                    <fieldset>
+                        <legend class="field__label">Questions <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required, up to 3)</span></legend>
+                        <div class="cols cols-2">
+                            
+                            
+                            <label class="choice">
+                                <input type="checkbox" name="question_ids" value="attention"
+                                       checked>
+                                <span>
+                                    <span class="choice__title">Attention</span><br>
+                                    <span class="choice__hint">How much does this ad grab your attention? · Does the ad stop the scroll?</span>
+                                </span>
+                            </label>
+                            
+                            <label class="choice">
+                                <input type="checkbox" name="question_ids" value="clarity"
+                                       checked>
+                                <span>
+                                    <span class="choice__title">Clarity</span><br>
+                                    <span class="choice__hint">How clear is the ad&#39;s message? · Is the message understood?</span>
+                                </span>
+                            </label>
+                            
+                            <label class="choice">
+                                <input type="checkbox" name="question_ids" value="relevance"
+                                       checked>
+                                <span>
+                                    <span class="choice__title">Relevance</span><br>
+                                    <span class="choice__hint">How relevant is this ad to your needs? · Does it fit persona needs?</span>
+                                </span>
+                            </label>
+                            
+                            <label class="choice">
+                                <input type="checkbox" name="question_ids" value="credibility"
+                                       >
+                                <span>
+                                    <span class="choice__title">Credibility</span><br>
+                                    <span class="choice__hint">How believable is this ad? · Is it believed?</span>
+                                </span>
+                            </label>
+                            
+                            <label class="choice">
+                                <input type="checkbox" name="question_ids" value="action_intent"
+                                       >
+                                <span>
+                                    <span class="choice__title">Action intent</span><br>
+                                    <span class="choice__hint">How likely are you to act on this ad? · Would they act on it?</span>
+                                </span>
+                            </label>
+                            
+                        </div>
+                        <p class="field__error" data-question-error hidden></p>
+                    </fieldset>
+
+                    <div class="field">
+                        <label class="field__label" for="persona_count">Panel size</label>
+                        <input class="input" type="number" id="persona_count" name="persona_count" required
+                               min="1" max="25" value="12"
+                               aria-describedby="persona-count-help">
+                        <p class="field__help" id="persona-count-help">1–25 personas. Larger panels cost and run linearly longer; 12 is the balanced default.</p>
+                        
+                    </div>
+                </div>
+            </section>
+
+            <div class="action-bar">
+                <p class="action-bar__summary" id="run-summary" aria-live="polite"></p>
+                <button type="submit" id="submit-btn" class="btn btn--primary" >Run evaluation</button>
             </div>
-        </details>
-    </section>
-
-    <section class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 lg:col-span-2" aria-labelledby="h-q">
-        <h2 id="h-q" class="text-[15px] font-semibold mb-2">3 · Questions (up to 3)</h2>
-        <div class="flex flex-wrap gap-x-6 gap-y-2">
-            <label class="flex items-center gap-2 min-h-[36px]"><input type="checkbox" name="question_ids" value="attention" checked class="accent-sky-700 w-4 h-4">Attention</label>
-            <label class="flex items-center gap-2 min-h-[36px]"><input type="checkbox" name="question_ids" value="clarity" checked class="accent-sky-700 w-4 h-4">Clarity</label>
-            <label class="flex items-center gap-2 min-h-[36px]"><input type="checkbox" name="question_ids" value="relevance" checked class="accent-sky-700 w-4 h-4">Relevance</label>
-            <label class="flex items-center gap-2 min-h-[36px]"><input type="checkbox" name="question_ids" value="credibility" class="accent-sky-700 w-4 h-4">Credibility</label>
-            <label class="flex items-center gap-2 min-h-[36px]"><input type="checkbox" name="question_ids" value="action_intent" class="accent-sky-700 w-4 h-4">Action intent</label>
         </div>
-    </section>
-
-    <div class="lg:col-span-2 sticky bottom-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 flex items-center gap-3">
-        <p id="form-errors" class="text-[12px] text-red-700 dark:text-red-300" role="alert"></p>
-        <button type="submit" id="submit-btn" class="ml-auto min-h-[36px] px-6 rounded-md bg-sky-700 hover:bg-sky-800 text-white font-medium">Run evaluation</button>
     </div>
 </form>
 
-<div id="working" class="hidden bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-8 text-center" role="status" aria-live="polite">
-    <div class="mx-auto w-10 h-10 rounded-full border-4 border-slate-200 dark:border-slate-700 border-t-sky-700 animate-spin" aria-hidden="true"></div>
-    <p class="mt-4 font-semibold text-[15px]">Evaluating your ad…</p>
-    <p class="text-[12px] text-slate-500 dark:text-slate-400">Typical run takes about a minute. Do not close this tab.</p>
-    <ol id="working-steps" class="mt-4 inline-block text-left text-slate-600 dark:text-slate-300">
-        <li data-step="0">● Generating 12-persona panel</li>
-        <li data-step="1">● Extracting ad facts (1 image call)</li>
-        <li data-step="2">● Collecting independent scores</li>
-        <li data-step="3">● Synthesizing themes + evidence check</li>
-    </ol>
-    <p class="mt-3 text-[12px] text-slate-500 dark:text-slate-400">Elapsed: <span id="working-elapsed">0</span>s (estimated progress)</p>
+<div class="card pending" id="pending" role="status">
+    <div class="pending__spinner" aria-hidden="true"></div>
+    <p class="pending__title">Running your evaluation…</p>
+    <p class="pending__note">Personas answer independently, then scores, themes, and evidence are computed. This usually takes about a minute — please keep this tab open.</p>
+    <p class="pending__elapsed tnum" id="pending-elapsed"></p>
 </div>
-<script>
-    const boxes = document.querySelectorAll('input[type="checkbox"][name="question_ids"]');
-    boxes.forEach(b => b.addEventListener('change', () => {
-        if (document.querySelectorAll('input[name="question_ids"]:checked').length > 3) b.checked = false;
-    }));
-    document.getElementById('image').addEventListener('change', (e) => {
-        const f = e.target.files[0], info = document.getElementById('file-info');
-        if (!f) return;
-        if (f.type !== "image/png" && f.type !== "image/jpeg") { info.textContent = "Please select PNG or JPEG."; e.target.value = ""; return; }
-        if (f.size > 15 * 1024 * 1024) { info.textContent = "File exceeds 15MB."; e.target.value = ""; return; }
-        info.textContent = `File: ${f.name} (${(f.size / 1048576).toFixed(2)} MB)`;
-    });
-    document.getElementById('eval-form').addEventListener('submit', (e) => {
-        const errs = [];
-        const mn = +document.getElementById('age_min').value, mx = +document.getElementById('age_max').value;
-        if (mn > mx) errs.push("Min age must be ≤ max age.");
-        if (!document.querySelectorAll('input[name="question_ids"]:checked').length) errs.push("Select at least one question.");
-        const box = document.getElementById('form-errors');
-        if (errs.length) { e.preventDefault(); box.textContent = errs.join(" "); return; }
-        box.textContent = "";
-        // Swap the form for a working screen while the long POST runs.
-        document.getElementById('eval-form').classList.add('hidden');
-        const working = document.getElementById('working');
-        working.classList.remove('hidden');
-        const steps = working.querySelectorAll('#working-steps li');
-        const t0 = Date.now();
-        const timer = setInterval(() => {
-            const s = Math.floor((Date.now() - t0) / 1000);
-            document.getElementById('working-elapsed').textContent = s;
-            // Honest pacing: 12s per stage estimate, capped at last step.
-            const active = Math.min(steps.length - 1, Math.floor(s / 12));
-            steps.forEach((li, i) => {
-                li.style.fontWeight = i === active ? "600" : "400";
-                li.style.color = i === active ? "#0369a1" : "";
-            });
-            if (s > 600) clearInterval(timer); // server budget caps the run first
-        }, 1000);
-    });
-</script>
+
 
 </main>
-<footer class="mx-auto max-w-6xl px-4 pb-8 text-[12px] text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700 pt-4">
+<footer class="shell-footer">
     Experimental creative-screening signal — not a replacement for human research. No CTR, sales, or causal-lift claims.
 </footer>
-<script>
-    (function () {
-        const btn = document.getElementById('theme-toggle');
-        const sync = () => btn.setAttribute('aria-pressed', document.documentElement.classList.contains('dark'));
-        sync();
-        btn.addEventListener('click', () => {
-            const dark = document.documentElement.classList.toggle('dark');
-            try { localStorage.setItem('adtestpro-theme', dark ? 'dark' : 'light'); } catch (e) {}
-            sync();
-        });
-    })();
-</script>
 </body>
 </html>

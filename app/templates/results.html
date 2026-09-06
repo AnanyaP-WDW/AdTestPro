@@ -1,139 +1,324 @@
 {% extends "layout.html" %}
-{% block title %}AdTestPro — Results{% endblock %}
-{% block breadcrumb %}<a href="/" class="underline">New evaluation</a> / Results{% endblock %}
+{% block title %}AdTestPro — Evaluation report{% endblock %}
+{% block crumbs %}<a href="/">Evaluate</a> <span aria-hidden="true">/</span> <span aria-current="page">Report</span>{% endblock %}
+{% block page_title %}Evaluation report{% endblock %}
+{% block page_sub %}Coverage-panel screening. Every number is computed in code; the model never writes a score.{% endblock %}
 {% block content %}
+
 {% if error %}
-<div role="alert" class="bg-red-50 border border-red-300 rounded-lg p-4">
-    <p class="font-semibold text-red-700">Something went wrong</p>
-    <p class="text-slate-600 dark:text-slate-300">{{ error }}</p>
-    {% if form_values is defined and form_values %}
-    <form method="post" action="/evaluate" enctype="multipart/form-data" class="mt-3">
-        {% for k, v in form_values.items() %}{% if v %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
-        <p class="text-[12px] text-slate-500 dark:text-slate-400 mb-2">Your brief was preserved — re-attach the image and
-        <button type="button" onclick="history.back()" class="underline text-sky-700 dark:text-sky-300 min-h-[36px]">go back to retry</button>.</p>
-    </form>
-    {% else %}<a href="/" class="underline text-sky-700 dark:text-sky-300">Back to form</a>{% endif %}
+<div class="alert alert--danger" role="alert">
+    <p class="alert__title">Something went wrong</p>
+    <p>{{ error }}</p>
+    <p>Your brief text was preserved, but the image is <strong>not kept between attempts</strong> —
+    <a class="link" href="/">start a new run</a> and re-attach it.</p>
 </div>
 {% elif result %}
-{# Status strip #}
-<div class="bg-white dark:bg-slate-800 border rounded-lg px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1 {{ 'border-amber-300 bg-amber-50' if result.status != 'complete' else 'border-slate-200 dark:border-slate-700' }}" role="status">
-    <span class="text-[12px] font-semibold px-2 py-1 rounded-full border {{ 'text-amber-700 bg-white dark:bg-slate-800 border-amber-300' if result.status != 'complete' else 'text-emerald-700 bg-emerald-50 border-emerald-300' }}">{{ result.status }}</span>
-    <span>Scale: <strong>1–5</strong></span>
-    <span>Sample: <strong>{{ result.scores.valid_responses }}</strong> valid / {{ result.scores.missing_responses }} missing</span>
-    {% if result.scores.overall_mean is not none %}<span>Overall (unweighted mean): <strong>{{ '%.2f'|format(result.scores.overall_mean) }}</strong></span>{% endif %}
-    <span class="text-slate-500 dark:text-slate-400">Coverage panel — not a representative sample</span>
+<div data-status="{{ result.status }}">
+
+    {# ------------------------------------------------ status strip #}
+    <div class="card status-strip" role="status">
+        <span class="badge badge--{{ status_kind }}">{{ status_label }}</span>
+        <span class="status-strip__item">Scale <strong>1–5</strong></span>
+        <span class="status-strip__item">Panel <strong>{{ panel_size }}</strong> personas</span>
+        <span class="status-strip__item">Rating cells <strong>{{ result.scores.valid_responses }}</strong> valid · <strong>{{ result.scores.missing_responses }}</strong> missing</span>
+        {% if result.scores.overall_mean is not none %}
+        <span class="status-strip__item">Overall mean <strong>{{ '%.2f'|format(result.scores.overall_mean) }}</strong></span>
+        {% endif %}
+        <span class="status-strip__item muted">Coverage panel — not a representative sample</span>
+    </div>
+
+    {% if result.trace.warnings %}
+    <div class="alert alert--warn report__section" role="alert">
+        <p class="alert__title">Warnings ({{ result.trace.warnings|length }})</p>
+        <ul class="warnings-list">
+            {% for w in result.trace.warnings %}<li>{{ w }}</li>{% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {# ------------------------------------------------ run context #}
+    <section class="card report__section" aria-labelledby="h-context" id="context">
+        <div class="card__body">
+            <h2 class="card__title" id="h-context">Run context</h2>
+            <div class="ctx-grid" style="margin-top: 12px;">
+                {% if thumb_uri %}
+                <img class="ctx-thumb" src="{{ thumb_uri }}" alt="Thumbnail of the evaluated ad creative">
+                {% else %}
+                <div class="ctx-thumb" style="display:flex;align-items:center;justify-content:center;">
+                    <span class="muted small">No image retained for this run</span>
+                </div>
+                {% endif %}
+                <dl class="ctx-kv">
+                    <dt>Campaign objective</dt><dd>{{ result.brief.campaign_objective if result.brief else '—' }}</dd>
+                    <dt>Product / service</dt><dd>{{ result.brief.product_description if result.brief else '—' }}</dd>
+                    {% if result.brief %}
+                    <dt>Target audience</dt>
+                    <dd>Ages {{ result.brief.age_min }}–{{ result.brief.age_max }} · {{ result.brief.location }} · {{ result.brief.category_familiarity }} familiarity{% if result.brief.interests %} · interested in {{ result.brief.interests|join(', ') }}{% endif %}</dd>
+                    <dt>Pain points</dt><dd>{{ result.brief.pain_points|join(', ') if result.brief.pain_points else '—' }}</dd>
+                    {% endif %}
+                    <dt>Dimensions</dt><dd>{{ selected_labels|join(', ') }}</dd>
+                    <dt>Run ID</dt><dd class="tnum">{{ result.evaluation_id }}</dd>
+                </dl>
+            </div>
+        </div>
+    </section>
+
+    {# ------------------------------------------------ at a glance #}
+    <section class="report__section" aria-labelledby="h-glance" id="at-a-glance">
+        <h2 class="report__heading" id="h-glance">At a glance</h2>
+        <div class="kpi-row">
+            <div class="card kpi">
+                <p class="kpi__label">Overall mean</p>
+                <p class="kpi__value">{{ '%.2f'|format(result.scores.overall_mean) if result.scores.overall_mean is not none else '—' }}</p>
+                <p class="kpi__note">Unweighted across {{ result.scores.per_question|length }} dimension(s)</p>
+            </div>
+            {% if highest %}
+            <div class="card kpi">
+                <p class="kpi__label">Strongest dimension</p>
+                <p class="kpi__value">{{ q_labels[highest.question_id] }}</p>
+                <p class="kpi__note">mean {{ '%.2f'|format(highest.mean) }} · n={{ highest.count }}</p>
+            </div>
+            {% endif %}
+            {% if lowest %}
+            <div class="card kpi">
+                <p class="kpi__label">Weakest dimension</p>
+                <p class="kpi__value">{{ q_labels[lowest.question_id] }}</p>
+                <p class="kpi__note">mean {{ '%.2f'|format(lowest.mean) }} · n={{ lowest.count }}</p>
+            </div>
+            {% endif %}
+            <div class="card kpi">
+                <p class="kpi__label">Disagreeing dimensions</p>
+                <p class="kpi__value">{{ result.scores.per_question|selectattr('disagreement')|list|length }}</p>
+                <p class="kpi__note">of {{ result.scores.per_question|length }} — see score detail</p>
+            </div>
+        </div>
+    </section>
+
+    {# ------------------------------------------------ recommendations #}
+    <section class="report__section" aria-labelledby="h-recs" id="recommendations">
+        <h2 class="report__heading" id="h-recs">Recommended next actions</h2>
+        {% if result.recommendations %}
+        <div class="card card__body">
+            <ol class="rec-list">
+                {% for r in result.recommendations %}<li>{{ r }}</li>{% endfor %}
+            </ol>
+        </div>
+        {% else %}
+        <p class="muted card card__body">No recommendations were produced for this run.</p>
+        {% endif %}
+    </section>
+
+    {# ------------------------------------------------ dimension scores #}
+    <section class="report__section" aria-labelledby="h-scores" id="scores">
+        <h2 class="report__heading" id="h-scores">Dimension scores <span class="badge">Scale 1–5</span></h2>
+        <div class="score-grid">
+            {% for q in result.scores.per_question %}
+            <article class="card score-card">
+                <div class="score-card__head">
+                    <h3 class="card__title">{{ q_labels.get(q.question_id, q.question_id) }}</h3>
+                    {% if q.disagreement %}<span class="badge badge--warn">High disagreement</span>{% endif %}
+                </div>
+                {% if q.mean is not none %}
+                <p class="score-card__mean">{{ '%.2f'|format(q.mean) }}<span class="muted" style="font-size:13px;font-weight:400;"> / 5</span></p>
+                <p class="score-card__stats">median {{ q.median }} · sd {{ '%.2f'|format(q.stdev) }} · n={{ q.count }} ratings</p>
+                <div class="score-bar" role="img" aria-label="{{ q_labels.get(q.question_id, q.question_id) }} mean {{ '%.2f'|format(q.mean) }} of 5, {{ q.count }} ratings">
+                    <div class="score-bar__fill {{ 'score-bar__fill--warn' if q.disagreement }}" style="width: {{ (q.mean / 5 * 100)|round(1) }}%"></div>
+                </div>
+                {% set dist = q.distribution %}
+                {% set max_n = dist.values()|max if dist else 0 %}
+                <div class="dist" aria-label="Distribution of {{ q.count }} ratings from 1 to 5">
+                    {% for k in range(1, 6) %}
+                    {% set n = dist.get(k, 0) %}
+                    <div class="dist__cell">
+                        <div class="dist__bar-wrap">
+                            <div class="dist__bar {{ 'dist__bar--mode' if n == max_n and n > 0 }}"
+                                 style="height: {{ (n / max_n * 100)|round(0) if max_n else 4 }}%"
+                                 title="{{ n }} rating(s) of {{ k }}"></div>
+                        </div>
+                        <span class="dist__n tnum">{{ n }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <p class="small muted" style="margin-top:6px;">Ratings 1 → 5{% if q.disagreement %} · range spans the scale, inspect minority themes{% endif %}</p>
+                {% else %}
+                <p class="muted" style="margin-top:8px;">No valid ratings — insufficient evidence for this dimension.</p>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+        <p class="small muted" style="margin-top:8px;">Synthetic-panel dispersion, not a population confidence interval.</p>
+    </section>
+
+    {# ------------------------------------------------ themes #}
+    <section class="report__section" aria-labelledby="h-themes" id="themes">
+        <h2 class="report__heading" id="h-themes">Audience themes</h2>
+        {% if result.themes %}
+        <div class="score-grid" style="grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));">
+            {% for t in result.themes %}
+            <article class="card score-card" {% if t.sentiment == 'minority' %}style="border-color: var(--warn-border);"{% endif %}>
+                <div class="score-card__head">
+                    <span class="badge {{ 'badge--warn' if t.sentiment == 'minority' else 'badge--accent' }}">{{ t.sentiment }}</span>
+                    <h3 class="card__title">{{ t.title }}</h3>
+                </div>
+                <p style="margin-top:8px;font-size:13px;">{{ t.summary }}</p>
+                <p class="small muted" style="margin-top:8px;">
+                    Personas: {{ t.persona_ids|join(', ') if t.persona_ids else '—' }}<br>
+                    Evidence:
+                    {% for eid in t.evidence_ids %}
+                        {% if eid in obs_ids %}<a class="ref" href="#obs-{{ eid }}">{{ eid }}</a>{% else %}<span class="ref ref--missing" title="No matching observation in this run">{{ eid }} unresolved</span>{% endif %}
+                        {{ '' if loop.last else ' ' }}
+                    {% endfor %}
+                </p>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="muted card card__body">No themes (empty or partial run).</p>
+        {% endif %}
+    </section>
+
+    {# ------------------------------------------------ evidence #}
+    {% if result.extraction %}
+    <section class="report__section" aria-labelledby="h-evidence" id="evidence">
+        <h2 class="report__heading" id="h-evidence">Structured extraction <span class="badge">Observation vs. interpretation</span></h2>
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Extraction observations table, scrollable">
+            <table>
+                <caption class="visually-hidden">Observable facts extracted from the creative, with evidence and confidence</caption>
+                <thead><tr>
+                    <th scope="col">ID</th><th scope="col">Field</th><th scope="col">Value</th><th scope="col">Evidence</th><th scope="col">Region</th><th scope="col">Conf.</th>
+                </tr></thead>
+                <tbody>
+                {% for o in result.extraction.observations %}
+                <tr class="evidence-anchor" id="obs-{{ o.id }}">
+                    <th scope="row"><span class="ref">{{ o.id }}</span></th>
+                    <td>{{ o.field|replace('_', ' ') }}</td>
+                    <td>{% if o.value not in (none, '', 'unknown') %}{{ o.value }}{% else %}<span class="chip">unknown</span>{% endif %}</td>
+                    <td class="muted">{{ o.evidence_quote if o.evidence_quote else '—' }}</td>
+                    <td class="muted">{{ o.region if o.region else '—' }}</td>
+                    <td><span class="conf">{{ o.confidence }}%</span></td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if result.extraction.interpretations %}
+        <details class="disclosure" style="margin-top:12px;">
+            <summary>Interpretations ({{ result.extraction.interpretations|length }}) — model reads, kept separate from facts</summary>
+            <div class="disclosure__body">
+                <div class="table-wrap" style="border:0;" tabindex="0" role="region" aria-label="Interpretations table, scrollable">
+                    <table>
+                        <thead><tr><th scope="col">Aspect</th><th scope="col">Read</th><th scope="col">Evidence</th><th scope="col">Conf.</th></tr></thead>
+                        <tbody>
+                        {% for i in result.extraction.interpretations %}
+                        <tr>
+                            <th scope="row">{{ i.aspect|replace('_', ' ') }}</th>
+                            <td>{{ i.value }}</td>
+                            <td>{% for eid in i.evidence_ids %}{% if eid in obs_ids %}<a class="ref" href="#obs-{{ eid }}">{{ eid }}</a>{% else %}<span class="ref ref--missing">{{ eid }} unresolved</span>{% endif %} {{ '' if loop.last }}{% endfor %}</td>
+                            <td><span class="conf">{{ i.confidence }}%</span></td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </details>
+        {% endif %}
+
+        {% if result.extraction.persuasion_strategies %}
+        <p class="small" style="margin-top:8px;"><strong>Persuasion strategies:</strong>
+            {% for s in result.extraction.persuasion_strategies %}<span class="chip">{{ s|replace('_', ' ') }}</span> {% endfor %}
+        </p>
+        {% endif %}
+    </section>
+    {% else %}
+    <section class="report__section">
+        <p class="muted card card__body">No extraction — the run ended before image analysis.</p>
+    </section>
+    {% endif %}
+
+    {# ------------------------------------------------ panel #}
+    {% if result.personas %}
+    <section class="report__section" aria-labelledby="h-panel" id="panel">
+        <h2 class="report__heading" id="h-panel">Coverage panel <span class="badge">{{ result.personas.personas|length }} personas</span></h2>
+        <div class="card card__body" style="margin-bottom:12px;">
+            <p class="small"><strong>Composition.</strong>
+                Stance: {% for k, v in stance_counts.items() %}{{ v }} {{ k }}{{ '' if loop.last else ' · ' }}{% endfor %}
+                &nbsp;·&nbsp; Familiarity: {% for k, v in fam_counts.items() %}{{ v }} {{ k }}{{ '' if loop.last else ' · ' }}{% endfor %}
+            </p>
+            <p class="small muted" style="margin-top:4px;">Panel slots rotate across your pain points, interests, familiarity, and stance — coverage by construction, not backstories.</p>
+        </div>
+
+        <details class="disclosure">
+            <summary>Persona profiles and individual responses ({{ result.personas.personas|length }})</summary>
+            <div class="disclosure__body">
+                <div class="table-wrap" style="border:0;" tabindex="0" role="region" aria-label="Persona table, scrollable">
+                    <table>
+                        <thead><tr>
+                            <th scope="col">ID</th><th scope="col">Segment</th><th scope="col">Stance</th><th scope="col">Familiarity</th><th scope="col">Provenance &amp; responses</th>
+                        </tr></thead>
+                        <tbody>
+                        {% for p in result.personas.personas %}
+                        <tr>
+                            <th scope="row">{{ p.id }}</th>
+                            <td>{{ p.segment }}</td>
+                            <td>{{ p.stance }}</td>
+                            <td>{{ p.category_familiarity }}</td>
+                            <td>
+                                <details>
+                                    <summary class="link" style="cursor:pointer;">Profile &amp; answers</summary>
+                                    <p class="small" style="margin-top:6px;"><strong>Needs:</strong> {{ p.needs|join(', ') if p.needs else '—' }}</p>
+                                    <p class="small"><strong>Supplied (from brief):</strong> {{ p.supplied_facts|join('; ') if p.supplied_facts else '—' }}</p>
+                                    <ul class="small muted" style="margin:4px 0 8px 16px;">
+                                        {% for h in p.inferred_hypotheses %}<li><strong>{{ h.field|replace('_',' ') }}:</strong> {{ h.value }} <em>(basis: {{ h.basis }})</em></li>{% endfor %}
+                                    </ul>
+                                    <p class="small"><strong>Responses:</strong></p>
+                                    <ul class="small" style="margin:4px 0 0 16px;">
+                                        {% for a in response_map.get(p.id, []) %}
+                                        <li>
+                                            {{ q_labels.get(a.question_id, a.question_id) }}:
+                                            {% if a.not_enough_information or a.rating is none %}<span class="chip">not enough info</span>
+                                            {% else %}<strong class="tnum">{{ a.rating }}/5</strong>{% endif %}
+                                            — {{ a.explanation }}
+                                            {% for eid in a.evidence_ids %}{% if eid in obs_ids %}<a class="ref" href="#obs-{{ eid }}">{{ eid }}</a>{% else %}<span class="ref ref--missing">{{ eid }}</span>{% endif %} {{ '' if loop.last }}{% endfor %}
+                                        </li>
+                                        {% else %}
+                                        <li class="muted">No retained answers for this persona in this run.</li>
+                                        {% endfor %}
+                                    </ul>
+                                </details>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </details>
+    </section>
+    {% else %}
+    <section class="report__section">
+        <p class="muted card card__body">No personas — the run ended before panel generation.</p>
+    </section>
+    {% endif %}
+
+    {# ------------------------------------------------ provenance #}
+    <section class="report__section" aria-labelledby="h-provenance" id="provenance">
+        <details class="disclosure">
+            <summary>Methodology &amp; run provenance</summary>
+            <div class="disclosure__body small muted">
+                <p>Model {{ result.trace.model }} · pipeline {{ result.trace.pipeline_version }} · revision {{ result.trace.code_revision }} · {{ result.trace.calls|length }} provider calls</p>
+                <p style="margin-top:4px;">Schema {{ result.trace.schema_version }} · started {{ result.trace.started_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</p>
+                {% if result.uncertainty %}
+                <ul style="margin:8px 0 0 18px;">
+                    {% for u in result.uncertainty %}<li>{{ u }}</li>{% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+        </details>
+    </section>
+
+    <p class="report__section"><a class="link" href="/">Evaluate another ad</a></p>
 </div>
-{% if result.trace.warnings %}
-<details class="bg-amber-50 border border-amber-300 rounded-lg px-4 py-2" {{ 'open' if result.status != 'complete' else '' }}>
-    <summary class="text-[12px] font-medium text-amber-700">Warnings ({{ result.trace.warnings|length }})</summary>
-    <ul class="list-disc pl-5 mt-1">{% for w in result.trace.warnings %}<li>{{ w }}</li>{% endfor %}</ul>
-</details>
 {% endif %}
-
-{# KPI band #}
-<section aria-labelledby="h-scores">
-    <h2 id="h-scores" class="text-[15px] font-semibold my-3">Dimension scores (1–5, n={{ result.scores.valid_responses }})</h2>
-    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-    {% for q in result.scores.per_question %}
-        <article class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
-            <div class="flex items-center gap-2">
-                <h3 class="font-semibold">{{ q.question_id }}</h3>
-                {% if q.disagreement %}<span class="ml-auto text-[12px] font-medium text-amber-700 bg-amber-50 border border-amber-300 rounded-full px-2 py-0.5">high disagreement</span>{% endif %}
-            </div>
-            {% if q.mean is not none %}
-            <p class="mt-1 text-[12px] text-slate-600 dark:text-slate-300">mean <strong class="text-slate-900">{{ '%.2f'|format(q.mean) }}</strong> · median {{ q.median }} · sd {{ '%.2f'|format(q.stdev) }} · n={{ q.count }}</p>
-            <div class="mt-2 h-2 rounded bg-slate-200 dark:bg-slate-700" role="img" aria-label="{{ q.question_id }} mean {{ '%.2f'|format(q.mean) }} of 5, {{ q.count }} ratings">
-                <div class="h-2 rounded {{ 'bg-amber-500' if q.disagreement else 'bg-sky-700' }}" style="width: {{ (q.mean / 5 * 100)|round(1) }}%"></div>
-            </div>
-            {% else %}<p class="mt-1 text-slate-500 dark:text-slate-400">No valid ratings — insufficient evidence.</p>{% endif %}
-        </article>
-    {% endfor %}
-    </div>
-    <p class="text-[12px] text-slate-500 dark:text-slate-400 mt-2">Synthetic-panel dispersion, not a population confidence interval.</p>
-</section>
-
-{# Themes #}
-<section aria-labelledby="h-themes">
-    <h2 id="h-themes" class="text-[15px] font-semibold my-3">Themes</h2>
-    {% if result.themes %}
-    <ul class="grid gap-3 md:grid-cols-2">
-    {% for t in result.themes %}
-        <li class="bg-white dark:bg-slate-800 border rounded-lg p-3 {{ 'border-amber-300' if t.sentiment == 'minority' else 'border-slate-200 dark:border-slate-700' }}">
-            <p><span class="text-[12px] font-semibold px-2 py-0.5 rounded-full border {{ 'text-amber-700 bg-amber-50 border-amber-300' if t.sentiment == 'minority' else 'text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-700' }}">{{ t.sentiment }}</span>
-            <strong class="ml-1">{{ t.title }}</strong></p>
-            <p class="mt-1 text-slate-600 dark:text-slate-300">{{ t.summary }}</p>
-            <p class="mt-1 text-[12px] text-slate-500 dark:text-slate-400">personas: {{ t.persona_ids|join(', ') }} · evidence: {{ t.evidence_ids|join(', ') }}</p>
-        </li>
-    {% endfor %}
-    </ul>
-    {% else %}<p class="text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">No themes (empty or partial run).</p>{% endif %}
-</section>
-
-{# Extraction table #}
-{% if result.extraction %}
-<section aria-labelledby="h-extract">
-    <h2 id="h-extract" class="text-[15px] font-semibold my-3">Structured extraction</h2>
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-x-auto">
-    <table class="w-full text-left">
-        <thead><tr class="border-b border-slate-200 dark:border-slate-700 text-[12px] text-slate-500 dark:text-slate-400">
-            <th scope="col" class="px-3 py-2 font-medium">Field</th><th scope="col" class="px-3 py-2 font-medium">Value</th><th scope="col" class="px-3 py-2 font-medium">Evidence</th>
-        </tr></thead>
-        <tbody>
-        {% for o in result.extraction.observations %}
-        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 {{ 'bg-slate-50 dark:bg-slate-700' if o.field == 'numerical_claim' else '' }}">
-            <th scope="row" class="px-3 py-2 font-medium whitespace-nowrap">{{ o.field }}</th>
-            <td class="px-3 py-2">{% if o.value is not none %}{{ o.value }}{% else %}<span class="text-[12px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-0.5">unknown</span>{% endif %}</td>
-            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">{{ o.evidence_quote if o.evidence_quote else '—' }}</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    </div>
-    {% if result.extraction.persuasion_strategies %}<p class="text-[12px] text-slate-600 dark:text-slate-300 mt-2">Strategies: {{ result.extraction.persuasion_strategies|join(', ') }}</p>{% endif %}
-</section>
-{% else %}<p class="text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">No extraction — the run ended before image analysis.</p>{% endif %}
-
-{# Personas table #}
-{% if result.personas %}
-<section aria-labelledby="h-personas">
-    <h2 id="h-personas" class="text-[15px] font-semibold my-3">Coverage personas ({{ result.personas.personas|length }})</h2>
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-x-auto">
-    <table class="w-full text-left" id="persona-table">
-        <thead><tr class="border-b border-slate-200 dark:border-slate-700 text-[12px] text-slate-500 dark:text-slate-400">
-            <th scope="col" class="px-3 py-2 font-medium">ID</th><th scope="col" class="px-3 py-2 font-medium">Segment</th><th scope="col" class="px-3 py-2 font-medium">Stance</th><th scope="col" class="px-3 py-2 font-medium">Familiarity</th><th scope="col" class="px-3 py-2 font-medium">Needs</th><th scope="col" class="px-3 py-2 font-medium">Detail</th>
-        </tr></thead>
-        <tbody>
-        {% for p in result.personas.personas %}
-        <tr class="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
-            <td class="px-3 py-2 font-medium whitespace-nowrap">{{ p.id }}</td>
-            <td class="px-3 py-2">{{ p.segment }}</td>
-            <td class="px-3 py-2 whitespace-nowrap">{{ p.stance }}</td>
-            <td class="px-3 py-2 whitespace-nowrap">{{ p.category_familiarity }}</td>
-            <td class="px-3 py-2 text-slate-600 dark:text-slate-300">{{ p.needs|join(', ') }}</td>
-            <td class="px-3 py-2"><details><summary class="text-sky-700 dark:text-sky-300 underline text-[12px]">supplied vs inferred</summary>
-                <p class="text-[12px] mt-1"><strong>Supplied:</strong> {{ p.supplied_facts|join('; ') }}</p>
-                <ul class="text-[12px] text-slate-600 dark:text-slate-300 list-disc pl-4">{% for h in p.inferred_hypotheses %}<li>{{ h.field }}: {{ h.value }} (basis: {{ h.basis }})</li>{% endfor %}</ul>
-            </details></td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    </div>
-</section>
-{% else %}<p class="text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">No personas — the run ended before panel generation.</p>{% endif %}
-
-{# Recommendations + provenance #}
-<section aria-labelledby="h-recs">
-    <h2 id="h-recs" class="text-[15px] font-semibold my-3">Evidence-linked recommendations</h2>
-    {% if result.recommendations %}
-    <ul class="list-disc pl-5 grid gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">{% for r in result.recommendations %}<li>{{ r }}</li>{% endfor %}</ul>
-    {% else %}<p class="text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">None.</p>{% endif %}
-</section>
-<details class="text-[12px] text-slate-500 dark:text-slate-400">
-    <summary>Run provenance</summary>
-    <p class="mt-1">model {{ result.trace.model }} · pipeline {{ result.trace.pipeline_version }} · revision {{ result.trace.code_revision }} · {{ result.trace.calls|length }} calls · eval {{ result.evaluation_id }}</p>
-    {% if result.uncertainty %}<ul class="list-disc pl-5 mt-1">{% for u in result.uncertainty %}<li>{{ u }}</li>{% endfor %}</ul>{% endif %}
-</details>
-{% endif %}
-<p class="mt-4"><a href="/" class="underline text-sky-700 dark:text-sky-300">Evaluate another ad</a></p>
 {% endblock %}
