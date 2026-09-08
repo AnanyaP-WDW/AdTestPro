@@ -10,11 +10,11 @@ PIPELINE_VERSION = "v0.1.0"
 SCHEMA_VERSION = "v0.1.0"
 MAX_PERSONAS = 25  # user-selectable panel size ceiling (schema-level bound)
 PROMPT_VERSIONS = {
-    "personas": "personas-v1",
-    "extract_ad": "extract_ad-v1",
-    "respond": "respond-v1",
+    "personas": "personas-v3",
+    "extract_ad": "extract_ad-v2",
+    "respond": "respond-v2",
     "synthesize": "synthesize-v1",
-    "consistency": "consistency-v1",
+    "consistency": "consistency-v2",
     "critic": "critic-v1",
 }
 
@@ -143,7 +143,9 @@ class Persona(BaseModel):
 
 
 class PersonaSet(BaseModel):
-    personas: list[Persona] = Field(min_length=1, max_length=MAX_PERSONAS)
+    # ponytail: +5 overshoot buffer — models occasionally emit one extra persona;
+    # generate_personas trims deterministically to the requested n.
+    personas: list[Persona] = Field(min_length=1, max_length=MAX_PERSONAS + 5)
     coverage_label: Literal["coverage_panel", "representative_sample"] = "coverage_panel"
 
     @field_validator("personas", mode="after")
@@ -186,8 +188,10 @@ class AdExtraction(BaseModel):
     observations: list[AdObservation] = Field(min_length=1)
     interpretations: list[AdInterpretation] = Field(default_factory=list)
     persuasion_strategies: list[PersuasionStrategy] = Field(default_factory=list)
-    media_checksum: str = Field(min_length=8, max_length=128)
-    mime: SupportedImageMime
+    # ponytail: model never supplies these — extract_ad() stamps verified values
+    # server-side after the call; empty defaults keep the schema honest.
+    media_checksum: str = Field(default="", max_length=128)
+    mime: Optional[SupportedImageMime] = None
 
     @field_validator("observations", mode="after")
     @classmethod
@@ -225,9 +229,20 @@ class PersonaAnswer(BaseModel):
     question_id: QuestionId
     rating: Optional[Rating] = None
     not_enough_information: bool = False
-    explanation: str = Field(min_length=1, max_length=2000)
+    # ponytail: min_length=0 — NEI answers legitimately carry no rationale; the
+    # report renders an em-dash for empty explanations.
+    explanation: str = Field(default="", max_length=2000)
     evidence_ids: list[str] = Field(default_factory=list)
     confidence: Confidence = 50
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_rating_on_nei(cls, data):
+        # Models keep the rating alongside not_enough_information; NEI means no
+        # rating, so normalize instead of bouncing to the repair loop.
+        if isinstance(data, dict) and data.get("not_enough_information") and data.get("rating") is not None:
+            data = {**data, "rating": None}
+        return data
 
     @model_validator(mode="after")
     def _rating_or_nei(self):

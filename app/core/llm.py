@@ -122,23 +122,24 @@ async def complete_structured(
     messages = _messages(system, user, image_b64, image_mime)
     attempts = 0
     last_error: Optional[str] = None
+    json_mode = True
     started = time.perf_counter()
     usage_in = usage_out = 0
     async with _sem:
         while attempts < 2:  # initial + one repair
             try:
-                payload_user = user if attempts == 0 else (
+                payload_user = user if attempts == 0 or not json_mode else (
                     user + f"\n\n<repair>Previous output failed validation: {last_error}. "
                     "Return ONLY valid JSON matching the schema.</repair>"
                 )
                 raw = await asyncio.wait_for(
                     _create(use_client, use_model, system, payload_user, temperature, max_tokens,
-                            image_b64, image_mime),
+                            image_b64, image_mime, json_mode=json_mode),
                     timeout=_timeout_s(),
                 )
                 text, u_in, u_out = _extract_text_and_usage(raw)
                 usage_in, usage_out = u_in, u_out
-                data = json.loads(text)
+                data = _loads_lenient(text)
                 parsed = model_cls.model_validate(data)
                 _record(trace, stage, use_model, prompt_version, started, usage_in, usage_out, attempts)
                 return parsed
@@ -155,6 +156,13 @@ async def complete_structured(
             except LLMError:
                 raise
             except Exception as e:  # provider SDK errors -> typed failure, no retry loop
+                if json_mode:
+                    # ponytail: some models (e.g. gemini-*-image) reject json_object mode
+                    # outright; spend the repair attempt on one fallback without it.
+                    json_mode = False
+                    attempts += 1
+                    last_error = f"provider rejected request ({type(e).__name__}); retried without json_object mode"
+                    continue
                 _record(trace, stage, use_model, prompt_version, started, 0, 0, attempts)
                 raise LLMError(f"stage {stage}: provider error: {type(e).__name__}") from e
     raise LLMOutputError(f"stage {stage}: exhausted repair budget")  # ponytail: unreachable guard
@@ -173,15 +181,18 @@ def _messages(system: str, user: str, image_b64: Optional[str], image_mime: Opti
 
 
 async def _create(client: Any, model: str, system: str, user: str, temperature: float,
-                 max_tokens: int, image_b64: Optional[str], image_mime: Optional[str]) -> Any:
+                 max_tokens: int, image_b64: Optional[str], image_mime: Optional[str],
+                 json_mode: bool = True) -> Any:
     # ponytail: json_object mode (not beta parse) so the injected fake needs only one method.
-    return await client.chat.completions.create(
+    kwargs: dict[str, Any] = dict(
         model=model,
         messages=_messages(system, user, image_b64, image_mime),
         temperature=temperature,
         max_tokens=max_tokens,
-        response_format={"type": "json_object"},
     )
+    if json_mode:
+        kwargs["response_format"] = {"type": "json_object"}
+    return await client.chat.completions.create(**kwargs)
 
 
 def _extract_text_and_usage(raw: Any) -> tuple[str, int, int]:
@@ -190,6 +201,19 @@ def _extract_text_and_usage(raw: Any) -> tuple[str, int, int]:
     u_in = int(getattr(usage, "prompt_tokens", 0) or 0)
     u_out = int(getattr(usage, "completion_tokens", 0) or 0)
     return text, u_in, u_out
+
+
+def _loads_lenient(text: str) -> Any:
+    """Parse model JSON; strip markdown fences some models add despite instructions."""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        stripped = text.strip()
+        if stripped.startswith("```"):
+            stripped = stripped.split("\n", 1)[-1]
+        if stripped.endswith("```"):
+            stripped = stripped.rsplit("```", 1)[0]
+        return json.loads(stripped.strip())
 
 
 def _record(trace: Optional[EvaluationTrace], stage: str, model: str, prompt_version: str,

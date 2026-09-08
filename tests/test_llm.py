@@ -47,6 +47,45 @@ def test_model_pool_unset_model_raises(monkeypatch):
         model_pool()
 
 
+def test_json_mode_rejection_falls_back_once(monkeypatch):
+    _env(monkeypatch)
+    trace = EvaluationTrace(evaluation_id="e", model="fake-model-1")
+    seen = {"n": 0}
+
+    def handler(kw):
+        seen["n"] += 1
+        if "response_format" in kw:  # provider rejects json_object outright
+            raise RuntimeError("400 invalid argument")
+        return {"name": "ok"}
+
+    fake = FakeClient(handler=handler)
+    out = asyncio.run(complete_structured(
+        model_cls=_M, system="s", user="u", prompt_version="p-v1",
+        stage="test", trace=trace, client=fake,
+    ))
+    assert out.name == "ok"
+    assert seen["n"] == 2  # json-mode attempt + fallback
+    assert fake.calls[0]["response_format"] == {"type": "json_object"}
+    assert "response_format" not in fake.calls[1]
+    assert trace.calls[0].retries == 1
+
+
+def test_persistent_provider_error_still_typed_failure(monkeypatch):
+    _env(monkeypatch)
+    fake = FakeClient(handler=lambda kw: RuntimeError("down"))
+    with pytest.raises(LLMError):
+        asyncio.run(complete_structured(
+            model_cls=_M, system="s", user="u", prompt_version="p-v1",
+            stage="test", trace=None, client=fake,
+        ))
+    assert fake.n_calls == 2  # json-mode attempt + fallback, then typed failure
+
+
+def test_lenient_parse_strips_markdown_fences():
+    assert llm._loads_lenient('```json\n{"name": "ok"}\n```') == {"name": "ok"}
+    assert llm._loads_lenient('{"name": "ok"}') == {"name": "ok"}
+
+
 def test_success_records_call_metadata(monkeypatch):
     _env(monkeypatch)
     trace = EvaluationTrace(evaluation_id="e", model="fake-model-1")
@@ -119,7 +158,7 @@ def test_provider_error_typed_no_retry(monkeypatch):
             model_cls=_M, system="s", user="u", prompt_version="p-v1",
             stage="test", trace=None, client=fake,
         ))
-    assert fake.n_calls == 1
+    assert fake.n_calls == 2  # json-mode attempt + one fallback, then typed failure
 
 
 def test_concurrency_respects_semaphore(monkeypatch):
