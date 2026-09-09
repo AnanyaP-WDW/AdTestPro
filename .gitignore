@@ -135,5 +135,11 @@ dmypy.json
 *db.json
 
 # Local-only working files
+BUSINESS_PLAN.md
 PLAN.md
 start.md
+
+# AdTestPro runtime data (never commit): Settings UI file (may hold an API key)
+# and the run-records database.
+settings.local.json
+data/
