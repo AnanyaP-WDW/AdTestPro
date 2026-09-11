@@ -155,6 +155,28 @@ def run(coro):
     return asyncio.run(coro)
 
 
+def test_semaphore_rebinds_across_event_loops(monkeypatch):
+    """Regression: a cached loop-bound semaphore must not leak across asyncio.run().
+
+    CI (Python 3.11) schedules the respond fan-out so >N calls contend, binding
+    the old process-global semaphore to the first loop; every later request then
+    raised 'bound to a different event loop'.
+    """
+    from app.core import llm
+
+    monkeypatch.setenv("ADTESTPRO_MAX_CONCURRENCY", "4")
+    llm.reset_client()
+
+    async def burst():
+        async def one():
+            async with llm._semaphore():
+                await asyncio.sleep(0)
+        await asyncio.gather(*[one() for _ in range(8)])  # 8 > limit -> must block
+
+    run(burst())
+    run(burst())  # would raise RuntimeError on the old global semaphore
+
+
 # ---------------- P1 ----------------
 
 def test_p1_brief_validation_and_evidence_lines():
