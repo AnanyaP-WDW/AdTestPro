@@ -19,6 +19,7 @@ from app.core.pipeline import (
     select_questions,
 )
 from app.core.llm import LLMError
+from app.core import runs as runs_store
 
 router = APIRouter(prefix="/api", tags=["evaluations"])
 
@@ -95,6 +96,7 @@ async def create_evaluation(
         # ponytail: safe mapping, no keys/prompts/stack traces outward.
         return JSONResponse(status_code=502, content={"detail": "evaluation provider unavailable"})
     body = result.model_dump(mode="json")
+    runs_store.record(result)  # API has no thumbnail; history detail notes it
     if digest:
         _IDEMPOTENT_RESULTS[digest] = body
     return JSONResponse(content=body)

@@ -255,7 +255,7 @@
                 <div class="table-wrap" style="border:0;" tabindex="0" role="region" aria-label="Persona table, scrollable">
                     <table>
                         <thead><tr>
-                            <th scope="col">ID</th><th scope="col">Segment</th><th scope="col">Stance</th><th scope="col">Familiarity</th><th scope="col">Provenance &amp; responses</th>
+                            <th scope="col">ID</th><th scope="col">Segment</th><th scope="col">Stance</th><th scope="col">Familiarity</th><th scope="col">Model</th><th scope="col">Provenance &amp; responses</th>
                         </tr></thead>
                         <tbody>
                         {% for p in result.personas.personas %}
@@ -264,6 +264,7 @@
                             <td>{{ p.segment }}</td>
                             <td>{{ p.stance }}</td>
                             <td>{{ p.category_familiarity }}</td>
+                            <td><span class="chip">{{ response_models.get(p.id) or '—' }}</span></td>
                             <td>
                                 <details>
                                     <summary class="link" style="cursor:pointer;">Profile &amp; answers</summary>
@@ -308,6 +309,7 @@
             <summary>Methodology &amp; run provenance</summary>
             <div class="disclosure__body small muted">
                 <p>Model {{ result.trace.model }} · pipeline {{ result.trace.pipeline_version }} · revision {{ result.trace.code_revision }} · {{ result.trace.calls|length }} provider calls</p>
+                {% if mix_note %}<p style="margin-top:4px;">{{ mix_note }}{% if extraction_models %} · extraction: {{ extraction_models[0] }}{% endif %}</p>{% endif %}
                 <p style="margin-top:4px;">Schema {{ result.trace.schema_version }} · started {{ result.trace.started_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</p>
                 {% if result.uncertainty %}
                 <ul style="margin:8px 0 0 18px;">
