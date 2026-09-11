@@ -575,7 +575,7 @@ async def _respond_one(
     if not kept:
         return None
     # One persona, its own answers only; never sees other personas.
-    return PersonaResponse(persona_id=persona.id, answers=kept)
+    return PersonaResponse(persona_id=persona.id, answers=kept, model=model)
 
 
 async def collect_responses(

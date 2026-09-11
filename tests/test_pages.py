@@ -62,13 +62,15 @@ def test_navigation_is_real_and_active_state_works():
 
 
 def test_readiness_state_disables_submission(monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    from app.core.settings import ProviderSettings
+
+    monkeypatch.setattr(app.state, "provider_settings", ProviderSettings(), raising=False)
     c = TestClient(app)
     html = c.get("/").text
     assert "Provider not configured" in html
     assert "Not configured" in html
     assert 'id="submit-btn" class="btn btn--primary" disabled' in html
-    assert "OPENAI_API_KEY" in html  # says what is missing
+    assert "Provider API key" in html  # says what is missing
 
 
 # ---------------- form ----------------

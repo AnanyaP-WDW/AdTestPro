@@ -29,14 +29,16 @@
         </a>
         <nav class="shell-nav" aria-label="Primary">
             <a href="/" {% if nav == 'evaluate' %}aria-current="page"{% endif %}>Evaluate</a>
+            <a href="/runs" {% if nav == 'runs' %}aria-current="page"{% endif %}>Runs</a>
             <a href="/docs" {% if nav == 'api' %}aria-current="page"{% endif %}>API docs</a>
+            <a href="/settings" {% if nav == 'settings' %}aria-current="page"{% endif %}>Settings</a>
         </nav>
         <div class="shell-header__end">
             {% if ready %}
             <span class="readiness readiness--ok" role="status"><span class="readiness__dot" aria-hidden="true"></span>Provider ready</span>
             {% else %}
             <span class="readiness" role="status"
-                  title="Missing: {{ (ready_missing if ready_missing else ['OPENAI_API_KEY'])|join(', ') }}">
+                  title="Missing: {{ (ready_missing if ready_missing else ['Provider API key'])|join(', ') }}">
                 <span class="readiness__dot" aria-hidden="true"></span>Not configured</span>
             {% endif %}
             <button type="button" id="theme-toggle" aria-pressed="false" aria-label="Toggle dark mode" class="theme-toggle">◐</button>

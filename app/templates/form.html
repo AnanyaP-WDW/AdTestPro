@@ -8,8 +8,9 @@
 {% if not ready %}
 <div class="alert alert--warn" role="alert">
     <p class="alert__title">Provider not configured</p>
-    <p>Missing: {{ (ready_missing if ready_missing else ['OPENAI_API_KEY'])|join(', ') }}.
-    Set it in the environment (see <code>.env.sample</code>) and restart. You cannot run an evaluation until this is resolved.</p>
+    <p>Missing: {{ (ready_missing if ready_missing else ['Provider API key'])|join(', ') }}.
+    Add an API key on the <a class="link" href="/settings">Settings</a> page and activate it.
+    You cannot run an evaluation until this is resolved.</p>
 </div>
 {% endif %}
 
@@ -205,7 +206,7 @@
                     </fieldset>
 
                     <div class="field">
-                        <label class="field__label" for="persona_count">Panel size</label>
+                        <label class="field__label" for="persona_count">Panel size <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
                         <input class="input" type="number" id="persona_count" name="persona_count" required
                                min="1" max="{{ persona_count_max }}" value="{{ form_values.get('persona_count', persona_count_default) }}"
                                aria-describedby="persona-count-help">

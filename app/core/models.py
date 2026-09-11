@@ -257,6 +257,7 @@ class PersonaAnswer(BaseModel):
 class PersonaResponse(BaseModel):
     persona_id: str = Field(min_length=1, max_length=64)
     answers: list[PersonaAnswer] = Field(min_length=1)
+    model: Optional[str] = None  # which model answered (pool rotation); None = legacy/unknown
 
     @field_validator("answers", mode="after")
     @classmethod

@@ -70,6 +70,13 @@ def model_pool(client: Any = None) -> list[str]:
 _client: Any = None
 
 
+def reset_client() -> None:
+    """Drop cached client + semaphore so new settings take effect (see settings.apply)."""
+    global _client, _sem
+    _client = None
+    _sem = None
+
+
 def shared_client() -> Any:
     """One shared async client (lazy so offline tests never construct it)."""
     global _client

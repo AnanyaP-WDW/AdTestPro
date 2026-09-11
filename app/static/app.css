@@ -238,6 +238,37 @@ legend { padding: 0; }
 .choice__title { font-weight: 600; font-size: 13px; }
 .choice__hint { font-size: 12px; color: var(--ink-3); }
 
+/* Stored API key rows (label, masked key, activate/reveal/delete). */
+.key-list { margin-top: 10px; }
+.key-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface);
+}
+.key-row + .key-row { margin-top: 8px; }
+.key-row__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.key-row__actions { margin-left: auto; display: flex; gap: 6px; flex: none; }
+.key-row__active { color: var(--ok-ink); font-size: 12px; font-weight: 600; }
+.key-row__missing { color: var(--danger-ink); }
+.key-edit {
+  margin: 8px 0 4px; padding: 12px; border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm); background: var(--surface-2);
+}
+.key-edit .field:first-child { margin-top: 0; }
+.key-storage { margin-top: 18px; }
+.key-storage .choice { margin-bottom: 8px; }
+
+/* Accessible tooltip: hover + keyboard focus reveal. */
+.tooltip { position: relative; display: inline-block; cursor: help; color: var(--accent); }
+.tooltip__text {
+  visibility: hidden; position: absolute; z-index: 30;
+  left: 50%; transform: translateX(-50%); bottom: 130%;
+  width: 240px; padding: 8px 10px; border-radius: var(--radius-sm);
+  background: var(--ink); color: var(--canvas); font-size: 12px; font-weight: 400;
+  box-shadow: var(--shadow);
+}
+.tooltip:hover .tooltip__text, .tooltip:focus .tooltip__text { visibility: visible; }
+
 /* --------------------------------------------------------------- layout */
 .grid-2 { display: grid; gap: 16px; }
 @media (min-width: 900px) {
@@ -446,6 +477,7 @@ details.disclosure__body { padding: 14px 16px; }
 .alert { border-radius: var(--radius); padding: 14px 16px; font-size: 13px; margin-bottom: 16px; }
 .alert--danger { background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger-ink); }
 .alert--warn { background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-ink); }
+.alert--ok { background: var(--ok-bg); border: 1px solid var(--ok-border); color: var(--ok-ink); }
 .alert__title { font-weight: 700; }
 .alert p + p { margin-top: 6px; }
 .alert a { color: inherit; }

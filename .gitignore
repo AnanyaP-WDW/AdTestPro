@@ -138,6 +138,7 @@ dmypy.json
 BUSINESS_PLAN.md
 PLAN.md
 start.md
+agent-flow.md
 
 # AdTestPro runtime data (never commit): Settings UI file (may hold an API key)
 # and the run-records database.
