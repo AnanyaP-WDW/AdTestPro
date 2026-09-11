@@ -11,7 +11,7 @@
   <a href="https://github.com/AnanyaP-WDW/AdTestPro/actions/workflows/ci.yml"><img src="https://github.com/AnanyaP-WDW/AdTestPro/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/AnanyaP-WDW/AdTestPro/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-GPLv3%20%7C%20commercial-blue" alt="License: GPLv3 or commercial"></a>
   <img src="https://img.shields.io/badge/python-3.11-blue" alt="Python 3.11">
-  <img src="https://img.shields.io/badge/tests-149%20offline-brightgreen" alt="149 offline tests">
+  <img src="https://img.shields.io/badge/tests-150%20offline-brightgreen" alt="150 offline tests">
   <img src="https://img.shields.io/badge/built%20with-FastAPI-009485" alt="Built with FastAPI">
 </p>
 
@@ -190,7 +190,7 @@ Every terminal run is then recorded to local SQLite for history.
 - `benchmarks/README.md` — PersonaBench / AdExtract-60 / AdScore-24 protocols, gate
   thresholds, and what's blocked on human data
 - `benchmarks/evaluate.py` — metrics + deterministic replay (`replay-cached`, `replay-fresh`)
-- 149 offline tests (`pytest tests/`) run the full pipeline on fixtures with zero network
+- 150 offline tests (`pytest tests/`) run the full pipeline on fixtures with zero network
 
 ## Research grounding
 

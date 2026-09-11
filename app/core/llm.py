@@ -32,6 +32,7 @@ class LLMOutputError(LLMError):
 
 
 _sem: Optional[asyncio.Semaphore] = None
+_sem_loop: Optional[asyncio.AbstractEventLoop] = None
 
 
 def _max_concurrency() -> int:
@@ -39,6 +40,22 @@ def _max_concurrency() -> int:
         return max(1, int(os.getenv("ADTESTPRO_MAX_CONCURRENCY", "4")))
     except ValueError:
         return 4
+
+
+def _semaphore() -> asyncio.Semaphore:
+    """Concurrency limiter bound to the *current* event loop.
+
+    A semaphore binds to the loop that first blocks on it. Tests (TestClient,
+    asyncio.run) and any multi-loop caller create a fresh loop per request, so a
+    single cached semaphore raises "bound to a different event loop". Rebuild it
+    whenever the running loop changes; the server itself only ever has one.
+    """
+    global _sem, _sem_loop
+    loop = asyncio.get_running_loop()
+    if _sem is None or _sem_loop is not loop:
+        _sem = asyncio.Semaphore(_max_concurrency())
+        _sem_loop = loop
+    return _sem
 
 
 def _timeout_s() -> float:
@@ -72,9 +89,10 @@ _client: Any = None
 
 def reset_client() -> None:
     """Drop cached client + semaphore so new settings take effect (see settings.apply)."""
-    global _client, _sem
+    global _client, _sem, _sem_loop
     _client = None
     _sem = None
+    _sem_loop = None
 
 
 def shared_client() -> Any:
@@ -122,9 +140,7 @@ async def complete_structured(
         "injected-fake" if client is not None else "")
     if not use_model:
         raise LLMConfigError("ADTESTPRO_MODEL is not set (exact model ID required)")
-    global _sem
-    if _sem is None:
-        _sem = asyncio.Semaphore(_max_concurrency())
+    sem = _semaphore()
 
     messages = _messages(system, user, image_b64, image_mime)
     attempts = 0
@@ -132,7 +148,7 @@ async def complete_structured(
     json_mode = True
     started = time.perf_counter()
     usage_in = usage_out = 0
-    async with _sem:
+    async with sem:
         while attempts < 2:  # initial + one repair
             try:
                 payload_user = user if attempts == 0 or not json_mode else (
