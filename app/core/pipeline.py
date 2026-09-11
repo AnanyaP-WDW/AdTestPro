@@ -700,7 +700,7 @@ def transition(trace: EvaluationTrace, nxt: str) -> None:
 
 def _pipeline_timeout_s() -> float:
     try:
-        return max(10.0, float(os.getenv("ADTESTPRO_PIPELINE_TIMEOUT_S", "300")))
+        return max(0.05, float(os.getenv("ADTESTPRO_PIPELINE_TIMEOUT_S", "300")))
     except ValueError:
         return 300.0
 
