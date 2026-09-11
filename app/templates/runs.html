@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+{% block title %}AdTestPro — Runs{% endblock %}
+{% block crumbs %}<span aria-current="page">Runs</span>{% endblock %}
+{% block page_title %}Runs{% endblock %}
+{% block page_sub %}Every terminal evaluation, newest first. Stored locally in
+<code>data/adtestpro.db</code> — full reports, no secrets.{% endblock %}
+{% block content %}
+
+{% if db_error %}
+<div class="alert alert--danger" role="alert">
+    <p class="alert__title">History unavailable</p>
+    <p>{{ db_error }}</p>
+</div>
+{% endif %}
+
+{% if rows %}
+<div class="table-wrap" tabindex="0" role="region" aria-label="Evaluation runs table, scrollable">
+    <table>
+        <caption class="visually-hidden">Past evaluations with status, panel size, summary, and mean score</caption>
+        <thead><tr>
+            <th scope="col">Time</th><th scope="col">Status</th><th scope="col">Panel</th><th scope="col">Dimensions</th><th scope="col">Mean</th><th scope="col">Model</th><th scope="col">Summary</th><th scope="col">Report</th>
+        </tr></thead>
+        <tbody>
+        {% for r in rows %}
+        <tr>
+            <td class="tnum">{{ r.created_at[:16].replace('T', ' ') }}</td>
+            <td><span class="badge {{ 'badge--ok' if r.status == 'complete' else 'badge--warn' if r.status.startswith('complete') or r.status == 'insufficient_evidence' else 'badge--danger' }}">{{ status_labels.get(r.status, r.status) }}</span></td>
+            <td class="tnum">{{ r.panel_size }}</td>
+            <td>{% if r.question_ids %}{% for q in r.question_ids %}{{ q_labels.get(q, q) }}{{ ', ' if not loop.last }}{% endfor %}{% else %}—{% endif %}</td>
+            <td class="tnum">{% if r.overall_mean is not none %}{{ '%.2f'|format(r.overall_mean) }}{% else %}—{% endif %}</td>
+            <td><span class="chip">{{ r.model }}</span></td>
+            <td class="small muted">{{ r.summary if r.summary else '—' }}</td>
+            <td><a class="link" href="/runs/{{ r.evaluation_id }}">Open</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% elif not db_error %}
+<div class="card card__body">
+    <p class="muted">No evaluations recorded yet. <a class="link" href="/">Run your first evaluation</a>.</p>
+</div>
+{% endif %}
+
+{% endblock %}

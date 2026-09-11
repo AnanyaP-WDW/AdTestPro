@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-label="AdTestPro — synthetic focus groups for ad creatives">
+  <!-- dark variant -->
+  <rect width="1200" height="300" rx="0" fill="#0f1115"/>
+  <rect x="0" y="0" width="1200" height="6" fill="#7ba3f7"/>
+
+  <!-- logo mark -->
+  <g transform="translate(96,106)">
+    <rect width="88" height="88" rx="20" fill="#7ba3f7"/>
+    <text x="44" y="60" text-anchor="middle"
+          font-family="ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+          font-size="48" font-weight="700" fill="#0d1220">A</text>
+  </g>
+
+  <!-- wordmark + tagline -->
+  <text x="216" y="158"
+        font-family="ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+        font-size="60" font-weight="700" letter-spacing="-1.5" fill="#e8eaee">AdTestPro</text>
+  <text x="219" y="200"
+        font-family="ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+        font-size="25" fill="#aab1bc">Synthetic focus groups for ad creatives</text>
+  <rect x="219" y="220" width="110" height="6" rx="3" fill="#7ba3f7"/>
+
+  <!-- capability chips, bottom right -->
+  <g font-family="ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" fill="#aab1bc">
+    <rect x="598" y="236" width="176" height="34" rx="17" fill="none" stroke="#3d4350" stroke-width="1.5"/>
+    <text x="686" y="258" text-anchor="middle">12–25 personas</text>
+    <rect x="790" y="236" width="130" height="34" rx="17" fill="none" stroke="#3d4350" stroke-width="1.5"/>
+    <text x="855" y="258" text-anchor="middle">1–5 rubrics</text>
+    <rect x="936" y="236" width="168" height="34" rx="17" fill="none" stroke="#3d4350" stroke-width="1.5"/>
+    <text x="1020" y="258" text-anchor="middle">Python-scored</text>
+  </g>
+</svg>

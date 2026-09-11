@@ -32,6 +32,7 @@ class LLMOutputError(LLMError):
 
 
 _sem: Optional[asyncio.Semaphore] = None
+_sem_loop: Optional[asyncio.AbstractEventLoop] = None
 
 
 def _max_concurrency() -> int:
@@ -41,6 +42,22 @@ def _max_concurrency() -> int:
         return 4
 
 
+def _semaphore() -> asyncio.Semaphore:
+    """Concurrency limiter bound to the *current* event loop.
+
+    A semaphore binds to the loop that first blocks on it. Tests (TestClient,
+    asyncio.run) and any multi-loop caller create a fresh loop per request, so a
+    single cached semaphore raises "bound to a different event loop". Rebuild it
+    whenever the running loop changes; the server itself only ever has one.
+    """
+    global _sem, _sem_loop
+    loop = asyncio.get_running_loop()
+    if _sem is None or _sem_loop is not loop:
+        _sem = asyncio.Semaphore(_max_concurrency())
+        _sem_loop = loop
+    return _sem
+
+
 def _timeout_s() -> float:
     try:
         return max(1.0, float(os.getenv("ADTESTPRO_TIMEOUT_S", "60")))
@@ -48,14 +65,34 @@ def _timeout_s() -> float:
         return 60.0
 
 
-def _model() -> str:
+def model_pool(client: Any = None) -> list[str]:
+    """Primary-first model pool: ADTESTPRO_MODELS (comma-separated) rotates judgment calls.
+
+    ponytail: fallback is the single ADTESTPRO_MODEL, so unset pool = today's behavior.
+    Injected clients (offline tests) tolerate missing config, matching complete_structured.
+    """
+    raw = os.getenv("ADTESTPRO_MODELS", "").strip()
+    if raw:
+        pool = [m.strip() for m in raw.split(",") if m.strip()]
+        if pool:
+            return pool
     model = os.getenv("ADTESTPRO_MODEL", "").strip()
-    if not model:
-        raise LLMConfigError("ADTESTPRO_MODEL is not set (exact model ID required)")
-    return model
+    if model:
+        return [model]
+    if client is not None:
+        return ["injected-fake"]
+    raise LLMConfigError("ADTESTPRO_MODEL is not set (exact model ID required)")
 
 
 _client: Any = None
+
+
+def reset_client() -> None:
+    """Drop cached client + semaphore so new settings take effect (see settings.apply)."""
+    global _client, _sem, _sem_loop
+    _client = None
+    _sem = None
+    _sem_loop = None
 
 
 def shared_client() -> Any:
@@ -103,30 +140,29 @@ async def complete_structured(
         "injected-fake" if client is not None else "")
     if not use_model:
         raise LLMConfigError("ADTESTPRO_MODEL is not set (exact model ID required)")
-    global _sem
-    if _sem is None:
-        _sem = asyncio.Semaphore(_max_concurrency())
+    sem = _semaphore()
 
     messages = _messages(system, user, image_b64, image_mime)
     attempts = 0
     last_error: Optional[str] = None
+    json_mode = True
     started = time.perf_counter()
     usage_in = usage_out = 0
-    async with _sem:
+    async with sem:
         while attempts < 2:  # initial + one repair
             try:
-                payload_user = user if attempts == 0 else (
+                payload_user = user if attempts == 0 or not json_mode else (
                     user + f"\n\n<repair>Previous output failed validation: {last_error}. "
                     "Return ONLY valid JSON matching the schema.</repair>"
                 )
                 raw = await asyncio.wait_for(
                     _create(use_client, use_model, system, payload_user, temperature, max_tokens,
-                            image_b64, image_mime),
+                            image_b64, image_mime, json_mode=json_mode),
                     timeout=_timeout_s(),
                 )
                 text, u_in, u_out = _extract_text_and_usage(raw)
                 usage_in, usage_out = u_in, u_out
-                data = json.loads(text)
+                data = _loads_lenient(text)
                 parsed = model_cls.model_validate(data)
                 _record(trace, stage, use_model, prompt_version, started, usage_in, usage_out, attempts)
                 return parsed
@@ -143,6 +179,13 @@ async def complete_structured(
             except LLMError:
                 raise
             except Exception as e:  # provider SDK errors -> typed failure, no retry loop
+                if json_mode:
+                    # ponytail: some models (e.g. gemini-*-image) reject json_object mode
+                    # outright; spend the repair attempt on one fallback without it.
+                    json_mode = False
+                    attempts += 1
+                    last_error = f"provider rejected request ({type(e).__name__}); retried without json_object mode"
+                    continue
                 _record(trace, stage, use_model, prompt_version, started, 0, 0, attempts)
                 raise LLMError(f"stage {stage}: provider error: {type(e).__name__}") from e
     raise LLMOutputError(f"stage {stage}: exhausted repair budget")  # ponytail: unreachable guard
@@ -161,15 +204,18 @@ def _messages(system: str, user: str, image_b64: Optional[str], image_mime: Opti
 
 
 async def _create(client: Any, model: str, system: str, user: str, temperature: float,
-                 max_tokens: int, image_b64: Optional[str], image_mime: Optional[str]) -> Any:
+                 max_tokens: int, image_b64: Optional[str], image_mime: Optional[str],
+                 json_mode: bool = True) -> Any:
     # ponytail: json_object mode (not beta parse) so the injected fake needs only one method.
-    return await client.chat.completions.create(
+    kwargs: dict[str, Any] = dict(
         model=model,
         messages=_messages(system, user, image_b64, image_mime),
         temperature=temperature,
         max_tokens=max_tokens,
-        response_format={"type": "json_object"},
     )
+    if json_mode:
+        kwargs["response_format"] = {"type": "json_object"}
+    return await client.chat.completions.create(**kwargs)
 
 
 def _extract_text_and_usage(raw: Any) -> tuple[str, int, int]:
@@ -178,6 +224,19 @@ def _extract_text_and_usage(raw: Any) -> tuple[str, int, int]:
     u_in = int(getattr(usage, "prompt_tokens", 0) or 0)
     u_out = int(getattr(usage, "completion_tokens", 0) or 0)
     return text, u_in, u_out
+
+
+def _loads_lenient(text: str) -> Any:
+    """Parse model JSON; strip markdown fences some models add despite instructions."""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        stripped = text.strip()
+        if stripped.startswith("```"):
+            stripped = stripped.split("\n", 1)[-1]
+        if stripped.endswith("```"):
+            stripped = stripped.rsplit("```", 1)[0]
+        return json.loads(stripped.strip())
 
 
 def _record(trace: Optional[EvaluationTrace], stage: str, model: str, prompt_version: str,

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="AdTestPro logo">
+  <rect width="128" height="128" rx="28" fill="#1e4bc8"/>
+  <rect x="10" y="10" width="108" height="108" rx="20" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="2"/>
+  <text x="64" y="86" text-anchor="middle"
+        font-family="ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+        font-size="64" font-weight="700" fill="#ffffff">A</text>
+</svg>

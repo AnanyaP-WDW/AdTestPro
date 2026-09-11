@@ -1,34 +1,61 @@
-{% extends "layout.html" %}
-{% block title %}AdTestPro — New evaluation{% endblock %}
-{% block crumbs %}<span aria-current="page">Evaluate</span>{% endblock %}
-{% block page_title %}Evaluate an ad creative{% endblock %}
-{% block page_sub %}Screen one creative against a coverage panel. Typical run: about a minute, cents per evaluation.{% endblock %}
-{% block content %}
+<!DOCTYPE html>
 
-{% if not ready %}
-<div class="alert alert--warn" role="alert">
-    <p class="alert__title">Provider not configured</p>
-    <p>Missing: {{ (ready_missing if ready_missing else ['Provider API key'])|join(', ') }}.
-    Add an API key on the <a class="link" href="/settings">Settings</a> page and activate it.
-    You cannot run an evaluation until this is resolved.</p>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdTestPro — New evaluation</title>
+    <script>
+        /* Pre-paint theme from saved choice or OS preference (avoids flash). */
+        try {
+            var saved = localStorage.getItem('adtestpro-theme');
+            if (saved === 'dark' || (!saved && matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        } catch (e) {}
+    </script>
+    <link rel="stylesheet" href="/static/app.css">
+    <script src="/static/app.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="shell-header">
+    <div class="shell-header__bar">
+        <a href="/" class="brand" aria-label="AdTestPro home">
+            <span class="brand__mark" aria-hidden="true">A</span>
+            <span class="brand__name">AdTestPro</span>
+            <span class="brand__tag">Creative screening</span>
+        </a>
+        <nav class="shell-nav" aria-label="Primary">
+            <a href="/" aria-current="page">Evaluate</a>
+            <a href="/docs" >API docs</a>
+        </nav>
+        <div class="shell-header__end">
+            
+            <span class="readiness readiness--ok" role="status"><span class="readiness__dot" aria-hidden="true"></span>Provider ready</span>
+            
+            <button type="button" id="theme-toggle" aria-pressed="false" aria-label="Toggle dark mode" class="theme-toggle">◐</button>
+        </div>
+    </div>
+</header>
+<div class="page-header">
+    <div>
+        <nav class="crumbs" aria-label="Breadcrumb"><span aria-current="page">Evaluate</span></nav>
+        <h1>Evaluate an ad creative</h1>
+        <p class="page-header__sub">Screen one creative against a coverage panel. Typical run: about a minute, cents per evaluation.</p>
+    </div>
 </div>
-{% endif %}
+<main id="main">
+    
 
-{% if submit_error %}
-<div class="error-summary" role="alert" tabindex="-1" id="submit-error">
-    <p class="alert__title">{{ submit_error }}</p>
-    <ul>
-        {% for field, msg in field_errors.items() %}
-        <li><a href="{{ '#section-config' if field == 'question_ids' else '#' + field }}">{{ msg }}</a></li>
-        {% endfor %}
-    </ul>
-</div>
-{% endif %}
+
+
+
 
 <div id="form-summary" class="error-summary" role="alert" hidden></div>
 
 <form method="post" action="/evaluate" enctype="multipart/form-data" id="eval-form"
-      novalidate{% if not ready %} data-provider-missing="true"{% endif %}>
+      novalidate>
     <div class="grid-2">
         <aside class="step-rail" aria-label="Form sections">
             <a class="step-rail__item is-active" href="#section-creative"><span class="step-rail__num">1</span> Creative</a>
@@ -53,7 +80,7 @@
                                accept="image/png, image/jpeg" aria-describedby="file-info image-help">
                         <p class="field__help" id="image-help">PNG or JPEG, up to 15MB.</p>
                         <p class="field__error" id="file-info" role="status" hidden></p>
-                        {% if field_errors.get('image') %}<p class="field__error">{{ field_errors['image'] }}</p>{% endif %}
+                        
                         <figure class="preview" id="image-preview">
                             <img id="image-preview-img" alt="Selected ad preview">
                             <figcaption class="preview__meta" id="image-preview-meta"></figcaption>
@@ -64,9 +91,9 @@
                         <label class="field__label" for="campaign_objective">Campaign objective <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
                         <input class="input" id="campaign_objective" name="campaign_objective" required maxlength="1000"
                                placeholder="e.g., Drive signups for a launch campaign"
-                               value="{{ form_values.get('campaign_objective', '') }}"
-                               {% if field_errors.get('campaign_objective') %}aria-invalid="true" aria-describedby="err-campaign_objective"{% endif %}>
-                        {% if field_errors.get('campaign_objective') %}<p class="field__error" id="err-campaign_objective">{{ field_errors['campaign_objective'] }}</p>{% endif %}
+                               value=""
+                               >
+                        
                     </div>
                 </div>
             </section>
@@ -84,29 +111,29 @@
                         <label class="field__label" for="product_description">Product / service <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
                         <textarea class="textarea" id="product_description" name="product_description" required maxlength="2000" rows="2"
                                   placeholder="Describe the product or service advertised…"
-                                  {% if field_errors.get('product_description') %}aria-invalid="true" aria-describedby="err-product_description"{% endif %}>{{ form_values.get('product_description', '') }}</textarea>
-                        {% if field_errors.get('product_description') %}<p class="field__error" id="err-product_description">{{ field_errors['product_description'] }}</p>{% endif %}
+                                  ></textarea>
+                        
                     </div>
 
                     <div class="cols cols-3">
                         <div class="field">
                             <label class="field__label" for="age_min">Min age <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
-                            <input class="input" type="number" id="age_min" name="age_min" required min="13" max="100" value="{{ form_values.get('age_min', 25) }}"
-                                   {% if field_errors.get('age_min') %}aria-invalid="true" aria-describedby="err-age_min"{% endif %}>
-                            {% if field_errors.get('age_min') %}<p class="field__error" id="err-age_min">{{ field_errors['age_min'] }}</p>{% endif %}
+                            <input class="input" type="number" id="age_min" name="age_min" required min="13" max="100" value="25"
+                                   >
+                            
                         </div>
                         <div class="field">
                             <label class="field__label" for="age_max">Max age <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
-                            <input class="input" type="number" id="age_max" name="age_max" required min="13" max="100" value="{{ form_values.get('age_max', 40) }}"
-                                   {% if field_errors.get('age_max') %}aria-invalid="true" aria-describedby="err-age_max"{% endif %}>
-                            {% if field_errors.get('age_max') %}<p class="field__error" id="err-age_max">{{ field_errors['age_max'] }}</p>{% endif %}
+                            <input class="input" type="number" id="age_max" name="age_max" required min="13" max="100" value="40"
+                                   >
+                            
                         </div>
                         <div class="field">
                             <label class="field__label" for="location">Location <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
                             <input class="input" type="text" id="location" name="location" required maxlength="200"
-                                   placeholder="Austin, USA" value="{{ form_values.get('location', '') }}"
-                                   {% if field_errors.get('location') %}aria-invalid="true" aria-describedby="err-location"{% endif %}>
-                            {% if field_errors.get('location') %}<p class="field__error" id="err-location">{{ field_errors['location'] }}</p>{% endif %}
+                                   placeholder="Austin, USA" value=""
+                                   >
+                            
                         </div>
                     </div>
 
@@ -114,32 +141,32 @@
                         <div class="field">
                             <label class="field__label" for="interests">Interests <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
                             <input class="input" type="text" id="interests" name="interests" required
-                                   placeholder="running, coffee" value="{{ form_values.get('interests', '') }}"
-                                   {% if field_errors.get('interests') %}aria-invalid="true" aria-describedby="err-interests"{% endif %}>
+                                   placeholder="running, coffee" value=""
+                                   >
                             <p class="field__help">Comma-separated; each becomes a coverage slot.</p>
-                            {% if field_errors.get('interests') %}<p class="field__error" id="err-interests">{{ field_errors['interests'] }}</p>{% endif %}
+                            
                         </div>
                         <div class="field">
                             <label class="field__label" for="pain_points">Pain points <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
                             <input class="input" type="text" id="pain_points" name="pain_points" required
-                                   placeholder="lack of time" value="{{ form_values.get('pain_points', '') }}"
-                                   {% if field_errors.get('pain_points') %}aria-invalid="true" aria-describedby="err-pain_points"{% endif %}>
+                                   placeholder="lack of time" value=""
+                                   >
                             <p class="field__help">Comma-separated; personas rotate emphasis across these.</p>
-                            {% if field_errors.get('pain_points') %}<p class="field__error" id="err-pain_points">{{ field_errors['pain_points'] }}</p>{% endif %}
+                            
                         </div>
                     </div>
 
                     <div class="field">
                         <label class="field__label" for="category_familiarity">Category familiarity <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
                         <select class="select" id="category_familiarity" name="category_familiarity" required>
-                            <option value="new" {% if form_values.get('category_familiarity', 'casual') == 'new' %}selected{% endif %}>New to the category</option>
-                            <option value="casual" {% if form_values.get('category_familiarity', 'casual') == 'casual' %}selected{% endif %}>Casual</option>
-                            <option value="regular" {% if form_values.get('category_familiarity', 'casual') == 'regular' %}selected{% endif %}>Regular</option>
-                            <option value="expert" {% if form_values.get('category_familiarity', 'casual') == 'expert' %}selected{% endif %}>Expert</option>
+                            <option value="new" >New to the category</option>
+                            <option value="casual" selected>Casual</option>
+                            <option value="regular" >Regular</option>
+                            <option value="expert" >Expert</option>
                         </select>
                     </div>
 
-                    <details class="disclosure" {% if form_values.get('price_sensitivity') or form_values.get('brand_familiarity') or form_values.get('gender_constraint') %}open{% endif %}>
+                    <details class="disclosure" >
                         <summary>Advanced targeting (optional)</summary>
                         <div class="details-disclosure__body disclosure__body">
                             <div class="cols cols-3">
@@ -147,24 +174,34 @@
                                     <label class="field__label" for="price_sensitivity">Price sensitivity</label>
                                     <select class="select" id="price_sensitivity" name="price_sensitivity">
                                         <option value="">Not specified</option>
-                                        {% for v in ('low', 'medium', 'high') %}
-                                        <option value="{{ v }}" {% if form_values.get('price_sensitivity') == v %}selected{% endif %}>{{ v|capitalize }}</option>
-                                        {% endfor %}
+                                        
+                                        <option value="low" >Low</option>
+                                        
+                                        <option value="medium" >Medium</option>
+                                        
+                                        <option value="high" >High</option>
+                                        
                                     </select>
                                 </div>
                                 <div class="field">
                                     <label class="field__label" for="brand_familiarity">Brand familiarity</label>
                                     <select class="select" id="brand_familiarity" name="brand_familiarity">
                                         <option value="">Not specified</option>
-                                        {% for v in ('unaware', 'aware', 'customer', 'loyal') %}
-                                        <option value="{{ v }}" {% if form_values.get('brand_familiarity') == v %}selected{% endif %}>{{ v|capitalize }}</option>
-                                        {% endfor %}
+                                        
+                                        <option value="unaware" >Unaware</option>
+                                        
+                                        <option value="aware" >Aware</option>
+                                        
+                                        <option value="customer" >Customer</option>
+                                        
+                                        <option value="loyal" >Loyal</option>
+                                        
                                     </select>
                                 </div>
                                 <div class="field">
                                     <label class="field__label" for="gender_constraint">Gender constraint</label>
                                     <input class="input" type="text" id="gender_constraint" name="gender_constraint" maxlength="100"
-                                           placeholder="Blank = no constraint" value="{{ form_values.get('gender_constraint', '') }}">
+                                           placeholder="Blank = no constraint" value="">
                                 </div>
                             </div>
                         </div>
@@ -184,41 +221,71 @@
                     <fieldset>
                         <legend class="field__label">Questions <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required, up to 3)</span></legend>
                         <div class="cols cols-2">
-                            {% set q_hints = {
-                                'attention': 'Does the ad stop the scroll?',
-                                'clarity': 'Is the message understood?',
-                                'relevance': 'Does it fit persona needs?',
-                                'credibility': 'Is it believed?',
-                                'action_intent': 'Would they act on it?'
-                            } %}
-                            {% for qid in question_ids_list %}
+                            
+                            
                             <label class="choice">
-                                <input type="checkbox" name="question_ids" value="{{ qid }}"
-                                       {% if (selected_questions is defined and qid in selected_questions) or (selected_questions is not defined and qid in ('attention', 'clarity', 'relevance')) %}checked{% endif %}>
+                                <input type="checkbox" name="question_ids" value="attention"
+                                       checked>
                                 <span>
-                                    <span class="choice__title">{{ qid|replace('_', ' ')|capitalize }}</span><br>
-                                    <span class="choice__hint">{{ q_texts[qid] }} · {{ q_hints[qid] }}</span>
+                                    <span class="choice__title">Attention</span><br>
+                                    <span class="choice__hint">How much does this ad grab your attention? · Does the ad stop the scroll?</span>
                                 </span>
                             </label>
-                            {% endfor %}
+                            
+                            <label class="choice">
+                                <input type="checkbox" name="question_ids" value="clarity"
+                                       checked>
+                                <span>
+                                    <span class="choice__title">Clarity</span><br>
+                                    <span class="choice__hint">How clear is the ad&#39;s message? · Is the message understood?</span>
+                                </span>
+                            </label>
+                            
+                            <label class="choice">
+                                <input type="checkbox" name="question_ids" value="relevance"
+                                       checked>
+                                <span>
+                                    <span class="choice__title">Relevance</span><br>
+                                    <span class="choice__hint">How relevant is this ad to your needs? · Does it fit persona needs?</span>
+                                </span>
+                            </label>
+                            
+                            <label class="choice">
+                                <input type="checkbox" name="question_ids" value="credibility"
+                                       >
+                                <span>
+                                    <span class="choice__title">Credibility</span><br>
+                                    <span class="choice__hint">How believable is this ad? · Is it believed?</span>
+                                </span>
+                            </label>
+                            
+                            <label class="choice">
+                                <input type="checkbox" name="question_ids" value="action_intent"
+                                       >
+                                <span>
+                                    <span class="choice__title">Action intent</span><br>
+                                    <span class="choice__hint">How likely are you to act on this ad? · Would they act on it?</span>
+                                </span>
+                            </label>
+                            
                         </div>
                         <p class="field__error" data-question-error hidden></p>
                     </fieldset>
 
                     <div class="field">
-                        <label class="field__label" for="persona_count">Panel size <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
+                        <label class="field__label" for="persona_count">Panel size</label>
                         <input class="input" type="number" id="persona_count" name="persona_count" required
-                               min="1" max="{{ persona_count_max }}" value="{{ form_values.get('persona_count', persona_count_default) }}"
+                               min="1" max="25" value="12"
                                aria-describedby="persona-count-help">
-                        <p class="field__help" id="persona-count-help">1–{{ persona_count_max }} personas. Larger panels cost and run linearly longer; 12 is the balanced default.</p>
-                        {% if field_errors.get('persona_count') %}<p class="field__error">{{ field_errors['persona_count'] }}</p>{% endif %}
+                        <p class="field__help" id="persona-count-help">1–25 personas. Larger panels cost and run linearly longer; 12 is the balanced default.</p>
+                        
                     </div>
                 </div>
             </section>
 
             <div class="action-bar">
                 <p class="action-bar__summary" id="run-summary" aria-live="polite"></p>
-                <button type="submit" id="submit-btn" class="btn btn--primary" {% if not ready %}disabled{% endif %}>Run evaluation</button>
+                <button type="submit" id="submit-btn" class="btn btn--primary" >Run evaluation</button>
             </div>
         </div>
     </div>
@@ -227,8 +294,14 @@
 <div class="card pending" id="pending" role="status">
     <div class="pending__spinner" aria-hidden="true"></div>
     <p class="pending__title">Running your evaluation…</p>
-    <p class="pending__note">Personas answer independently, then scores, themes, and evidence are computed. This usually takes one to three minutes — please keep this tab open.</p>
+    <p class="pending__note">Personas answer independently, then scores, themes, and evidence are computed. This usually takes about a minute — please keep this tab open.</p>
     <p class="pending__elapsed tnum" id="pending-elapsed"></p>
 </div>
 
-{% endblock %}
+
+</main>
+<footer class="shell-footer">
+    Experimental creative-screening signal — not a replacement for human research. No CTR, sales, or causal-lift claims.
+</footer>
+</body>
+</html>

@@ -2,10 +2,24 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+import logging
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent
+
+# Load project-root .env for local runs (compose supplies env separately; existing env wins).
+load_dotenv(BASE_DIR.parent / ".env", override=False)
+
+# Terminal-visible logs: timestamped, level from env (default INFO so per-run
+# eval/status/tokens/cost lines show under `uvicorn app.main:app --reload`).
+logging.basicConfig(
+    level=os.getenv("ADTESTPRO_LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)-5s %(name)s %(message)s",
+    force=True,
+)
 
 # Ensure static dir exists so clean checkouts mount safely.
 (BASE_DIR / "static").mkdir(parents=True, exist_ok=True)
@@ -45,6 +59,13 @@ app.include_router(evaluations_router)
 app.include_router(pages_router)
 app.state.templates = templates
 
+# Runtime provider settings (Settings UI) override env; empty file = env as-is.
+from app.core.settings import apply_settings as _apply_settings  # noqa: E402
+from app.core.settings import load_settings as _load_settings  # noqa: E402
+
+app.state.provider_settings = _load_settings()
+_apply_settings(app.state.provider_settings)
+
 
 @app.get("/health")
 def health_check():
@@ -54,11 +75,8 @@ def health_check():
 @app.get("/ready")
 def readiness_check():
     # Fails with a clear error when required config is absent; /health stays offline-safe.
-    missing = []
-    if not os.getenv("OPENAI_API_KEY"):
-        missing.append("OPENAI_API_KEY")
-    if not os.getenv("ADTESTPRO_MODEL", "gpt-4o-mini-2024-07-18"):
-        missing.append("ADTESTPRO_MODEL")
-    if missing:
-        return {"ready": False, "missing": missing}
+    # Readiness is store-driven: the env key is not consulted (see settings.py).
+    settings = app.state.provider_settings
+    if not settings.is_configured:
+        return {"ready": False, "missing": ["api_key"]}
     return {"ready": True, "model": os.getenv("ADTESTPRO_MODEL", "gpt-4o-mini-2024-07-18")}

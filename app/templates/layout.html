@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+{# App shell. Tokens live in /static/app.css (single source of truth).
+   `ready` is a bool; `ready_missing` an optional list of missing config keys. #}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AdTestPro{% endblock %}</title>
+    <script>
+        /* Pre-paint theme from saved choice or OS preference (avoids flash). */
+        try {
+            var saved = localStorage.getItem('adtestpro-theme');
+            if (saved === 'dark' || (!saved && matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        } catch (e) {}
+    </script>
+    <link rel="stylesheet" href="/static/app.css">
+    <script src="/static/app.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="shell-header">
+    <div class="shell-header__bar">
+        <a href="/" class="brand" aria-label="AdTestPro home">
+            <span class="brand__mark" aria-hidden="true">A</span>
+            <span class="brand__name">AdTestPro</span>
+            <span class="brand__tag">Creative screening</span>
+        </a>
+        <nav class="shell-nav" aria-label="Primary">
+            <a href="/" {% if nav == 'evaluate' %}aria-current="page"{% endif %}>Evaluate</a>
+            <a href="/runs" {% if nav == 'runs' %}aria-current="page"{% endif %}>Runs</a>
+            <a href="/docs" {% if nav == 'api' %}aria-current="page"{% endif %}>API docs</a>
+            <a href="/settings" {% if nav == 'settings' %}aria-current="page"{% endif %}>Settings</a>
+        </nav>
+        <div class="shell-header__end">
+            {% if ready %}
+            <span class="readiness readiness--ok" role="status"><span class="readiness__dot" aria-hidden="true"></span>Provider ready</span>
+            {% else %}
+            <span class="readiness" role="status"
+                  title="Missing: {{ (ready_missing if ready_missing else ['Provider API key'])|join(', ') }}">
+                <span class="readiness__dot" aria-hidden="true"></span>Not configured</span>
+            {% endif %}
+            <button type="button" id="theme-toggle" aria-pressed="false" aria-label="Toggle dark mode" class="theme-toggle">◐</button>
+        </div>
+    </div>
+</header>
+<div class="page-header">
+    <div>
+        <nav class="crumbs" aria-label="Breadcrumb">{% block crumbs %}<a href="/">Evaluate</a>{% endblock %}</nav>
+        <h1>{% block page_title %}AdTestPro{% endblock %}</h1>
+        <p class="page-header__sub">{% block page_sub %}{% endblock %}</p>
+    </div>
+</div>
+<main id="main">
+    {% block content %}{% endblock %}
+</main>
+<footer class="shell-footer">
+    Experimental creative-screening signal — not a replacement for human research. No CTR, sales, or causal-lift claims.
+</footer>
+</body>
+</html>

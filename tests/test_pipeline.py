@@ -98,16 +98,24 @@ def extraction_payload() -> dict:
     }
 
 
-def full_fake(question_ids=("clarity", "relevance"), ratings=(4, 5), split_panel=False) -> FakeClient:
+def full_fake(question_ids=("clarity", "relevance"), ratings=(4, 5), split_panel=False,
+              n_personas: int = 12) -> FakeClient:
     """Routes by system prompt; deterministic canned payloads."""
     state = {"respond_n": 0}
 
     def handler(kw) -> dict:
         system = kw["messages"][0]["content"]
-        user = json.dumps(kw["messages"][1])
+        user = kw["messages"][1]["content"]
         if "respondent profiles" in system:
+            import re
+            m = re.search(r"ids p(\d+)\.\.p(\d+)", user)
+            if m:
+                lo, hi = int(m.group(1)), int(m.group(2))
+            else:
+                lo, hi = 1, n_personas
             return {"coverage_label": "coverage_panel",
-                    "personas": [persona_payload(i) for i in range(12)]}
+                    "personas": [persona_payload(i - 1) for i in range(lo, min(hi, lo + n_personas) + 1)
+                                 if i <= n_personas]}
         if "observable facts" in system:
             return extraction_payload()
         if "AS the given persona" in system:
@@ -147,6 +155,28 @@ def run(coro):
     return asyncio.run(coro)
 
 
+def test_semaphore_rebinds_across_event_loops(monkeypatch):
+    """Regression: a cached loop-bound semaphore must not leak across asyncio.run().
+
+    CI (Python 3.11) schedules the respond fan-out so >N calls contend, binding
+    the old process-global semaphore to the first loop; every later request then
+    raised 'bound to a different event loop'.
+    """
+    from app.core import llm
+
+    monkeypatch.setenv("ADTESTPRO_MAX_CONCURRENCY", "4")
+    llm.reset_client()
+
+    async def burst():
+        async def one():
+            async with llm._semaphore():
+                await asyncio.sleep(0)
+        await asyncio.gather(*[one() for _ in range(8)])  # 8 > limit -> must block
+
+    run(burst())
+    run(burst())  # would raise RuntimeError on the old global semaphore
+
+
 # ---------------- P1 ----------------
 
 def test_p1_brief_validation_and_evidence_lines():
@@ -182,6 +212,20 @@ def test_p3_coverage_matrix_covers_all_inputs():
     interests = {s["interest_emphasis"] for s in slots}
     assert {"lack of time", "plastic waste"} <= pains
     assert {"running", "coffee"} <= interests
+
+
+def test_p3_coverage_matrix_no_repeat_ceiling_above_12():
+    """Slots 13+ must be unique combinations (regression: cycles repeated every 12)."""
+    for n in (18, 25):
+        slots = build_coverage_matrix(parse_brief(BRIEF), n)
+        tuples = [(s["pain_emphasis"], s["interest_emphasis"], s["category_familiarity"],
+                   s["price_sensitivity"], s["stance"]) for s in slots]
+        assert len(set(tuples)) == n, n
+        # every axis still fully represented
+        assert {s["pain_emphasis"] for s in slots} == {"lack of time", "plastic waste"}
+        assert {s["interest_emphasis"] for s in slots} == {"running", "coffee"}
+        assert {s["stance"] for s in slots} == {"skeptical", "neutral", "receptive"}
+        assert {s["category_familiarity"] for s in slots} == {"new", "casual", "regular", "expert"}
 
 
 def test_p2_p4_deterministic_validation():
@@ -410,6 +454,30 @@ def test_s4_themes_linked_minority_visible_scores_frozen():
     assert any("overstates" in w for w in res2.trace.warnings)
 
 
+# ---------------- verdict schemas ----------------
+
+def test_verdict_schemas_accept_typed_issue_objects():
+    """Models may return {type, description} issue objects; both verdicts must coerce."""
+    from app.core.pipeline import ConsistencyVerdict, CriticVerdict
+
+    v = ConsistencyVerdict.model_validate({
+        "valid": False,
+        "issues": [
+            {"type": "age", "description": "persona 40 outside 25-40"},
+            "plain string issue",
+            {"type": "stance", "message": "odd stance"},
+        ],
+    })
+    assert v.issues == ["age: persona 40 outside 25-40", "plain string issue", "stance: odd stance"]
+    c = CriticVerdict.model_validate({
+        "passed": False,
+        "issues": [{"type": "unsupported_claim", "description": "claim lacks evidence"}],
+    })
+    assert c.issues == ["unsupported_claim: claim lacks evidence"]
+    # string-only payloads unchanged
+    assert CriticVerdict.model_validate({"passed": True, "issues": []}).issues == []
+
+
 # ---------------- S5 ----------------
 
 def test_s5_terminal_states_and_transitions():
@@ -458,3 +526,101 @@ def test_s5_cancellation_propagates(monkeypatch):
 
     with pytest.raises(asyncio.CancelledError):
         run(main())
+
+
+# ---------------- model pool rotation (respond stage) ----------------
+
+def test_model_pool_rotates_respond_by_persona_index(monkeypatch):
+    import re
+
+    monkeypatch.setenv("ADTESTPRO_MODEL", "model-a")
+    monkeypatch.setenv("ADTESTPRO_MODELS", "model-a, model-b")
+    monkeypatch.delenv("ADTESTPRO_IMAGE_MODEL", raising=False)  # isolate from ambient .env
+    fake = full_fake()
+    seen: dict[str, str] = {}
+    base_handler = fake.handler
+
+    def handler(kw):
+        if "AS the given persona" in kw["messages"][0]["content"]:
+            m = re.search(r"You are persona (p\d+)", kw["messages"][1]["content"])
+            seen[m.group(1)] = kw["model"]
+        return base_handler(kw)
+
+    fake.handler = handler
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"], client=fake))
+    assert res.status in ("complete", "complete_high_disagreement")
+    assert len(seen) == 12
+    for i in range(12):
+        assert seen[f"p{i + 1:02d}"] == ["model-a", "model-b"][i % 2]
+    # per-call receipts record the rotation; non-respond stages stay on the primary
+    respond_models = {c.model for c in res.trace.calls if c.stage == "respond"}
+    assert respond_models == {"model-a", "model-b"}
+    assert {c.model for c in res.trace.calls if c.stage != "respond"} == {"model-a"}
+
+
+def test_respond_uses_single_model_when_pool_unset(monkeypatch):
+    monkeypatch.setenv("ADTESTPRO_MODEL", "model-a")
+    monkeypatch.delenv("ADTESTPRO_MODELS", raising=False)
+    monkeypatch.delenv("ADTESTPRO_IMAGE_MODEL", raising=False)  # isolate from ambient .env
+    fake = full_fake()
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"], client=fake))
+    assert res.status in ("complete", "complete_high_disagreement")
+    assert {c.model for c in res.trace.calls} == {"model-a"}
+
+
+# ---------------- persona count ----------------
+
+def test_persona_count_25_happy_path():
+    fake = full_fake(n_personas=25)
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"],
+                           client=fake, persona_count=25))
+    assert res.status in ("complete", "complete_high_disagreement")
+    ids = [p.id for p in res.personas.personas]
+    assert len(ids) == 25
+    assert ids == [f"p{i + 1:02d}" for i in range(25)]
+
+
+def test_persona_count_clamped_to_max():
+    fake = full_fake(n_personas=25)
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"],
+                           client=fake, persona_count=999))
+    assert len(res.personas.personas) == 25
+
+
+def test_persona_count_default_is_12():
+    fake = full_fake()
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"], client=fake))
+    assert len(res.personas.personas) == 12
+
+
+def test_panel_size_mismatch_repairs_once():
+    fake = full_fake()
+    state = {"personas_calls": 0}
+    base = fake.handler
+
+    def handler(kw):
+        out = base(kw)
+        if isinstance(out, dict) and "personas" in out:
+            state["personas_calls"] += 1
+            if state["personas_calls"] == 1:
+                return {"coverage_label": "coverage_panel",
+                        "personas": [persona_payload(i) for i in range(11)]}
+        return out
+
+    fake.handler = handler
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"], client=fake))
+    assert any("panel size 11" in r for r in res.trace.repairs)
+    assert len(res.personas.personas) == 12
+
+
+def test_panel_size_persistent_mismatch_fails_persona_invalid():
+    fake = full_fake(n_personas=11)  # repair also returns the wrong size
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"], client=fake))
+    assert res.status == "persona_invalid"

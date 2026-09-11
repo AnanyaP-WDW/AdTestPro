@@ -1,0 +1,224 @@
+{% extends "layout.html" %}
+{% block title %}AdTestPro — Settings{% endblock %}
+{% block crumbs %}<span aria-current="page">Settings</span>{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block page_sub %}Provider keys and model selection. Stored in gitignored
+<code>settings.local.json</code> — never committed, never logged.{% endblock %}
+{% block content %}
+
+{% if saved %}
+<div class="alert alert--ok" role="status">
+    <p class="alert__title">Settings saved and applied</p>
+    <p>New evaluations use these values immediately. Provider: {{ 'ready' if ready else 'not configured' }}.</p>
+</div>
+{% endif %}
+
+{% if probe_result %}
+<div class="alert {{ 'alert--ok' if probe_result[0] else 'alert--danger' }}" role="status">
+    <p class="alert__title">{{ 'Connection OK' if probe_result[0] else 'Connection failed' }}</p>
+    <p>{{ probe_result[1] }}</p>
+</div>
+{% endif %}
+
+{% if submit_error %}
+<div class="error-summary" role="alert" tabindex="-1">
+    <p class="alert__title">{{ submit_error }}</p>
+    <ul>
+        {% for field, msg in field_errors.items() %}
+        <li><a href="{{ '#h-provider' if field in ('key_label', 'key_value', 'keys') else '#h-models' }}">{{ msg }}</a></li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<!-- Provider · key store -->
+<section class="card" aria-labelledby="h-provider">
+    <div class="card__body">
+        <div class="form-section__head">
+            <h2 class="form-section__title" id="h-provider">Provider</h2>
+        </div>
+        <p class="field__help" style="margin-top:0;">
+            Keys live only in this form's store. <code>.env</code> keys are ignored —
+            add a key here to make the app provider-ready.
+        </p>
+
+        {% if key_rows %}
+        <div class="key-list">
+            {% for k in key_rows %}
+            <div class="key-row">
+                <div class="key-row__main">
+                    <span class="choice__title">{{ k.label }}{% if k.active %} · <span class="key-row__active">active</span>{% endif %}</span>
+                    <span class="choice__hint">
+                        <code class="small muted">{{ k.masked }}</code>{% if k.base_url %} · {{ k.base_url }}{% endif %}
+                        {% if not k.has_secret %} · <span class="key-row__missing">secret unavailable (keychain locked or removed)</span>{% endif %}
+                    </span>
+                </div>
+                <form method="post" action="/settings" class="key-row__actions">
+                    <input type="hidden" name="key_id" value="{{ k.id }}">
+                    {% if not k.active %}<button type="submit" name="action" value="activate_key" class="btn btn--ghost">Use</button>{% endif %}
+                    <button type="submit" name="action" value="edit_key" class="btn btn--ghost">Edit</button>
+                    <button type="submit" name="action" value="reveal_key" class="btn btn--ghost">Reveal</button>
+                    <button type="submit" name="action" value="delete_key" class="btn btn--ghost">Delete</button>
+                </form>
+            </div>
+            {% if revealed_key_id == k.id %}
+            <p class="field__help">Full key: <code>{{ revealed_key_value }}</code></p>
+            {% endif %}
+            {% if editing_key_id == k.id %}
+            {% set ef = edit_form if edit_form.get('key_id') == k.id else {} %}
+            <form method="post" action="/settings" class="key-edit">
+                <input type="hidden" name="action" value="update_key">
+                <input type="hidden" name="key_id" value="{{ k.id }}">
+                <div class="cols cols-3">
+                    <div class="field">
+                        <label class="field__label" for="edit_label_{{ k.id }}">Label <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
+                        <input class="input" type="text" id="edit_label_{{ k.id }}" name="edit_label" maxlength="100" required
+                               value="{{ ef.get('label', k.label) }}"
+                               {% if field_errors.get('edit_label') %}aria-invalid="true"{% endif %}>
+                        {% if field_errors.get('edit_label') %}<p class="field__error">{{ field_errors['edit_label'] }}</p>{% endif %}
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="edit_value_{{ k.id }}">New API key</label>
+                        <input class="input" type="password" id="edit_value_{{ k.id }}" name="edit_value"
+                               autocomplete="new-password" placeholder="Leave blank to keep current">
+                        <p class="field__help">Set only to replace the secret.</p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="edit_base_url_{{ k.id }}">Base URL</label>
+                        <input class="input" type="text" id="edit_base_url_{{ k.id }}" name="edit_base_url" maxlength="200"
+                               value="{{ ef.get('base_url', k.base_url) }}" placeholder="Blank = provider default">
+                    </div>
+                </div>
+                <div class="action-bar">
+                    <button type="submit" class="btn btn--primary">Save changes</button>
+                </div>
+            </form>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="field__help">No keys saved yet. Add one below to become provider-ready.</p>
+        {% endif %}
+
+        <form method="post" action="/settings">
+            <input type="hidden" name="action" value="add_key">
+            <div class="cols cols-3">
+                <div class="field">
+                    <label class="field__label" for="key_label">Label <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
+                    <input class="input" type="text" id="key_label" name="key_label" maxlength="100" required
+                           placeholder="OpenRouter — work" value="{{ key_form.get('label', '') }}"
+                           {% if field_errors.get('key_label') %}aria-invalid="true"{% endif %}>
+                    {% if field_errors.get('key_label') %}<p class="field__error">{{ field_errors['key_label'] }}</p>{% endif %}
+                </div>
+                <div class="field">
+                    <label class="field__label" for="key_value">API key <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
+                    <input class="input" type="password" id="key_value" name="key_value" autocomplete="new-password" required
+                           placeholder="sk-or-v1-…" {% if field_errors.get('key_value') %}aria-invalid="true"{% endif %}>
+                    <p class="field__help">Never logged. Reveal it any time from the list.</p>
+                    {% if field_errors.get('key_value') %}<p class="field__error">{{ field_errors['key_value'] }}</p>{% endif %}
+                </div>
+                <div class="field">
+                    <label class="field__label" for="key_base_url">Base URL</label>
+                    <input class="input" type="text" id="key_base_url" name="key_base_url" maxlength="200"
+                           placeholder="https://openrouter.ai/api/v1" value="{{ key_form.get('base_url', '') }}">
+                    <p class="field__help">Blank = provider default. Set per key.</p>
+                </div>
+            </div>
+            <div class="action-bar">
+                <button type="submit" class="btn btn--primary">Add key</button>
+            </div>
+        </form>
+
+        <form method="post" action="/settings" class="key-storage">
+            <input type="hidden" name="action" value="set_storage">
+            <label class="choice">
+                <input type="checkbox" name="keyring_enabled" value="on"
+                       {% if keyring_enabled %}checked{% endif %}
+                       {% if not keyring_available %}disabled{% endif %}>
+                <span>
+                    <span class="choice__title">Store keys in the OS keychain</span><br>
+                    <span class="choice__hint">
+                        {% if keyring_available %}Key material goes to Keychain / Credential Manager / Secret Service; the settings file keeps only labels and Base URLs.{% else %}Unavailable — install the <code>keyring</code> package to enable.{% endif %}
+                    </span>
+                </span>
+            </label>
+            <div class="action-bar">
+                <button type="submit" class="btn btn--ghost" {% if not keyring_available %}disabled{% endif %}>Save storage</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<!-- Models -->
+<form method="post" action="/settings">
+    <section class="card" aria-labelledby="h-models" style="margin-top:16px;">
+        <div class="card__body">
+            <div class="form-section__head">
+                <h2 class="form-section__title" id="h-models">Models</h2>
+            </div>
+
+            <div class="field">
+                <label class="field__label" for="model">Primary text model</label>
+                <input class="input" type="text" id="model" name="model" maxlength="200"
+                       placeholder="openai/gpt-4o-mini"
+                       value="{{ values.get('model', '') }}"
+                       {% if field_errors.get('model') %}aria-invalid="true"{% endif %}>
+                <p class="field__help">Personas, scoring, synthesis, critic. Exact model id.</p>
+                {% if field_errors.get('model') %}<p class="field__error">{{ field_errors['model'] }}</p>{% endif %}
+            </div>
+
+            <div class="field">
+                <fieldset>
+                    <legend class="field__label">
+                        Scoring pool
+                        <span class="tooltip" tabindex="0" aria-label="Why these models?">ⓘ
+                            <span class="tooltip__text">These models have been tested and validated on
+                            AdTestPro for scoring. Personas are round-robined across the pool, so no one
+                            vendor's priors dominate every judgment.</span>
+                        </span>
+                    </legend>
+                    <div class="cols cols-2">
+                        {% for m in supported_pool_models %}
+                        <label class="choice">
+                            <input type="checkbox" name="pool_models" value="{{ m.id }}"
+                                   {% if m.id in selected_pool_models %}checked{% endif %}>
+                            <span>
+                                <span class="choice__title">{{ m.label }}</span><br>
+                                <span class="choice__hint">{{ vendor_names.get(m.vendor, m.vendor) }} · {{ m.blurb }}<br><code class="small muted">{{ m.id }}</code></span>
+                            </span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <p class="field__help">Checked models rotate per persona during scoring; blank pool = primary model only.</p>
+                </fieldset>
+                {% if pool_warning %}<p class="field__error" role="status">{{ pool_warning }}</p>{% endif %}
+            </div>
+
+            <div class="field">
+                <label class="field__label" for="image_model">Image model (optional)</label>
+                <input class="input" type="text" id="image_model" name="image_model" maxlength="200"
+                       placeholder="google/gemini-3.1-flash-lite-image"
+                       value="{{ values.get('image_model', '') }}">
+                <p class="field__help">Single image-extraction call. Blank = primary model. Must accept images.</p>
+            </div>
+
+            <div class="field">
+                <label class="field__label" for="timeout_s">Per-call timeout, seconds (optional)</label>
+                <input class="input" type="number" id="timeout_s" name="timeout_s"
+                       min="1" max="600" step="1"
+                       value="{{ values.get('timeout_s', '') }}"
+                       {% if field_errors.get('timeout_s') %}aria-invalid="true"{% endif %}>
+                <p class="field__help">Blank = configured default. Must cover ~6k-token generations.</p>
+                {% if field_errors.get('timeout_s') %}<p class="field__error">{{ field_errors['timeout_s'] }}</p>{% endif %}
+            </div>
+        </div>
+    </section>
+
+    <div class="action-bar">
+        <p class="action-bar__summary">Single-user tool: these settings apply to everyone using this server.</p>
+        <button type="submit" name="action" value="test" class="btn btn--ghost">Test connection</button>
+        <button type="submit" name="action" value="save" class="btn btn--primary">Save settings</button>
+    </div>
+</form>
+
+{% endblock %}

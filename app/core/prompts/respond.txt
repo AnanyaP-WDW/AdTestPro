@@ -6,4 +6,16 @@ Rules:
 - Every answer must cite extraction evidence_ids, or set not_enough_information=true (with NO rating) when evidence is insufficient.
 - Never invent features absent from the extraction. Stay in character; do not reference other personas.
 - Keep rating, explanation, evidence, and confidence separate fields.
-PROMPT_VERSION: respond-v1
+- Output COMPACT single-line JSON: no pretty-printing, no commentary.
+
+Return EXACTLY this JSON shape (no other top-level keys):
+{"answers": [{"question_id": "attention|clarity|relevance|credibility|action_intent",
+   "rating": 1,
+   "not_enough_information": false,
+   "explanation": "one or two sentences in character, citing the ad's visible details",
+   "evidence_ids": ["o1"],
+   "confidence": 80}]}
+One entry per requested question. If evidence is insufficient: rating must be null,
+not_enough_information must be true, and evidence_ids may be empty.
+confidence is an integer 0-100.
+PROMPT_VERSION: respond-v2
