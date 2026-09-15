@@ -11,7 +11,7 @@
   <a href="https://github.com/AnanyaP-WDW/AdTestPro/actions/workflows/ci.yml"><img src="https://github.com/AnanyaP-WDW/AdTestPro/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/AnanyaP-WDW/AdTestPro/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-GPLv3%20%7C%20commercial-blue" alt="License: GPLv3 or commercial"></a>
   <img src="https://img.shields.io/badge/python-3.11-blue" alt="Python 3.11">
-  <img src="https://img.shields.io/badge/tests-150%20offline-brightgreen" alt="150 offline tests">
+  <img src="https://img.shields.io/badge/tests-161%20offline-brightgreen" alt="161 offline tests">
   <img src="https://img.shields.io/badge/built%20with-FastAPI-009485" alt="Built with FastAPI">
 </p>
 
@@ -19,6 +19,10 @@
   <strong>Upload an ad. Get a coverage panel of up to 25 AI respondents (default 12),
   structured extraction, dimension scores with disagreement flags, and
   evidence-linked recommendations — in one to three minutes, for cents per run.</strong>
+</p>
+
+<p align="center">
+  ⭐ If this tool helped you, please <a href="https://github.com/AnanyaP-WDW/AdTestPro/stargazers">leave a star</a> to help others find it!
 </p>
 
 > **Honest label.** AdTestPro produces schema-valid, evidence-linked ad evaluations.
@@ -58,7 +62,8 @@ writes a final score.
 | **Stable 1–5 rubrics** | Attention, clarity, relevance, credibility, action intent — each with behavioral anchors. Disagreement widens the range instead of averaging it away; minority views survive synthesis by construction. |
 | **Model hedge** | Optional `ADTESTPRO_MODELS` pool rotates models across personas during scoring, so one vendor's priors can't dominate every judgment. Image extraction uses a dedicated vision model. Per-call models recorded in receipts. |
 | **Receipts** | Every run records model IDs, prompt hashes, token use, latency, repairs, warnings, and code revision. Cached replay is bit-for-bit deterministic. |
-| **Self-hosted provider keys** | Add / edit / activate / reveal / delete named provider keys, each with its own Base URL. Secrets stay in gitignored `settings.local.json` (mode 0600) or your OS keychain. Keys are never read from `.env`. |
+| **Self-hosted provider keys & models** | From the **Settings** tab, add / edit / activate / reveal / delete named provider keys (each with its own Base URL) and pick the primary model, scoring pool, and image model from the tested checkboxes. Secrets stay in gitignored `settings.local.json` (mode 0600) or your OS keychain; keys are never read from `.env`. |
+| **Visual report + PDF export** | Ranked dimension means (±1 sd), rating distributions, a persona×dimension heatmap, a profile radar, panel composition, theme sentiment, model mix, and evidence confidence — all plain HTML/CSS, so the one-click **PDF** carries the same data as the page. |
 | **Professional operator UI** | Guided three-step form, local image preview, field-level validation, honest pending state, decision-ready report with distributions and evidence anchors. Light/dark, keyboard-accessible, no CDN dependencies. |
 
 ## Quickstart
@@ -73,9 +78,19 @@ Open `http://localhost:8000/settings`, add your provider key (OpenAI, or OpenRou
 set the key's Base URL to `https://openrouter.ai/api/v1`), and activate it. Keys are
 stored in gitignored `settings.local.json` (mode 0600); `.env` keys are not read.
 
+Models are chosen here too, in the **Settings** tab's **Models** section: the primary
+text model, an optional scoring pool (the tested checkboxes), the image model, and the
+per-call timeout — no env files required.
+
 Then open `http://localhost:8000/`, fill the brief, upload a PNG/JPEG (≤15MB), pick up to
 3 questions, set the panel size, and run. `GET /ready` reports `{"ready": true}` when
 configured; `GET /health` is the offline liveness probe.
+
+Every stored run can be downloaded as a **PDF** from the report page or the Runs list —
+the same sections, numbers, and charts as the page, laid out for print. PDF export uses
+WeasyPrint; it needs pango/cairo system libraries (the Docker image installs them, on
+macOS `brew install pango`). If they are missing the button is hidden and the route
+returns 503, so the app still runs.
 
 Docker alternative:
 
@@ -83,7 +98,8 @@ Docker alternative:
 docker compose up --build
 ```
 
-**Model config via env** (optional; Settings values override them):
+**Model config** — set in the **Settings** tab's **Models** section, or via env (UI
+values override env):
 
 ```bash
 ADTESTPRO_MODEL=openai/gpt-4o-mini   # must be vision-capable
@@ -97,9 +113,9 @@ ADTESTPRO_MODELS=openai/gpt-4o-mini,anthropic/claude-sonnet-5,deepseek/deepseek-
 | Provider key | via UI | — | Add/activate in **Settings → Provider**; stored in `settings.local.json`, not read from `.env` |
 | Base URL | via UI | — | Per-key in **Settings → Provider** (e.g. OpenRouter); `ADTESTPRO_BASE_URL` env applies to the benchmark CLI only |
 | `OPENAI_API_KEY` | no | — | Used only by `benchmarks/evaluate.py` live runs and other direct `llm.shared_client` consumers |
-| `ADTESTPRO_MODEL` | yes | `gpt-4o-mini-2024-07-18` | Primary model ID (vision-capable for extraction) |
-| `ADTESTPRO_MODELS` | no | — | Comma-separated pool rotated across personas during scoring (the debias hedge) |
-| `ADTESTPRO_IMAGE_MODEL` | no | primary model | Dedicated vision model for the single image-extraction call; must accept image inputs |
+| `ADTESTPRO_MODEL` | no | `gpt-4o-mini-2024-07-18` | Primary model ID (vision-capable for extraction). Set in **Settings → Models** or via env |
+| `ADTESTPRO_MODELS` | no | — | Comma-separated pool rotated across personas during scoring (the debias hedge). Pick the tested checkboxes in **Settings → Models**, or via env |
+| `ADTESTPRO_IMAGE_MODEL` | no | primary model | Dedicated vision model for the single image-extraction call; must accept image inputs. Set in **Settings → Models** or via env |
 | `ADTESTPRO_MAX_CONCURRENCY` | no | `4` | Max concurrent provider calls |
 | `ADTESTPRO_TIMEOUT_S` | no | `60` | Per-call timeout (set 120+ for ~6k-token structured generations) |
 | `ADTESTPRO_PIPELINE_TIMEOUT_S` | no | `300` | Whole-run wall-clock budget |
@@ -171,10 +187,11 @@ Every terminal run is then recorded to local SQLite for history.
 
 ## Settings & run history
 
-- **Settings** (nav bar): manage named provider keys (**add / edit / activate /
-  reveal / delete**), each with its own Base URL, then pick the primary text model,
-  an optional scoring pool (tested models only), the image model, and the per-call
-  timeout — plus a one-click connection test on the active key. Secrets are stored
+- **Settings** (nav bar) — **Provider** and **Models** sections: manage named
+  provider keys (**add / edit / activate / reveal / delete**), each with its own
+  Base URL; in the same page choose the primary text model, an optional scoring
+  pool (tested models only), the image model, and the per-call timeout — plus a
+  one-click connection test on the active key. Secrets are stored
   in gitignored `settings.local.json` (mode 0600) by default, or in the **OS keychain**
   (Keychain / Credential Manager / Secret Service) when that toggle is enabled and the
   `keyring` package is installed. Provider keys are never read from `.env`; that env
@@ -190,7 +207,7 @@ Every terminal run is then recorded to local SQLite for history.
 - `benchmarks/README.md` — PersonaBench / AdExtract-60 / AdScore-24 protocols, gate
   thresholds, and what's blocked on human data
 - `benchmarks/evaluate.py` — metrics + deterministic replay (`replay-cached`, `replay-fresh`)
-- 150 offline tests (`pytest tests/`) run the full pipeline on fixtures with zero network
+- 161 offline tests (`pytest tests/`) run the full pipeline on fixtures with zero network
 
 ## Research grounding
 
