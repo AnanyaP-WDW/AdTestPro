@@ -371,6 +371,88 @@ legend { padding: 0; }
   font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
   margin-bottom: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
+.report__actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 14px 0 0; }
+
+/* ------------------------------------------------------------- charts
+   Every chart is plain HTML + CSS so the browser and the PDF (WeasyPrint)
+   render the identical markup. Colors are token-driven; the 1–5 scale is a
+   fixed sequential ramp so ratings read the same in light and dark. */
+.chart-switch { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.chart-switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.chart-switch label {
+  padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: 999px;
+  font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer;
+}
+.chart-switch input:checked + label {
+  background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
+}
+.chart-switch input:focus-visible + label { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.chart-panels .chart-panel { display: none; }
+.chart-switch:has(#cv-means:checked) ~ .chart-panels [data-view="means"],
+.chart-switch:has(#cv-distribution:checked) ~ .chart-panels [data-view="distribution"],
+.chart-switch:has(#cv-heatmap:checked) ~ .chart-panels [data-view="heatmap"],
+.chart-switch:has(#cv-radar:checked) ~ .chart-panels [data-view="radar"] { display: block; }
+.chart-panels.is-pdf .chart-panel { display: block; }
+
+.cbar {
+  display: grid; grid-template-columns: 120px 1fr 56px; align-items: center;
+  gap: 8px; margin: 6px 0; font-size: 12px;
+}
+.cbar__label { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cbar__track {
+  position: relative; height: 12px; background: var(--surface-2);
+  border-radius: 999px; overflow: hidden;
+}
+.cbar__bar { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.cbar__bar.is-warn { background: var(--warn-ink); }
+.cbar__sd {
+  position: absolute; top: 0; height: 100%;
+  border-left: 1px solid var(--ink-3); border-right: 1px solid var(--ink-3);
+  background: rgba(22, 24, 29, 0.10);
+}
+.cbar__value { text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+.chart-bars--sm .cbar { grid-template-columns: 116px 1fr 44px; margin: 4px 0; }
+.chart__note { font-size: 11px; color: var(--ink-3); margin-top: 8px; }
+
+.stack-list { display: grid; gap: 8px; }
+.stack-row { display: grid; grid-template-columns: 120px 1fr 96px; align-items: center; gap: 8px; font-size: 12px; }
+.stack-row__label { color: var(--ink-2); }
+.stack-row__n { color: var(--ink-3); font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
+.stack { display: flex; height: 14px; border-radius: 3px; overflow: hidden; background: var(--surface-2); }
+.stack__seg { display: block; height: 100%; }
+.stack__seg.is-empty { min-width: 0; }
+
+.seg-1, .heat-1 { background: #e6ecfa; }
+.seg-2, .heat-2 { background: #c4d2f1; }
+.seg-3, .heat-3 { background: #9db4e7; }
+.seg-4, .heat-4 { background: #6485da; }
+.seg-5, .heat-5 { background: #2f5fce; }
+
+.legend { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 10px; font-size: 11px; color: var(--ink-3); }
+.legend__item { display: inline-flex; align-items: center; gap: 5px; }
+.legend__swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+.heatmap__grid { display: grid; gap: 2px; font-size: 11px; align-items: center; }
+.heatmap__corner { }
+.heatmap__col { font-size: 10px; color: var(--ink-3); text-align: center; overflow: hidden; text-overflow: ellipsis; }
+.heatmap__row { font-family: var(--mono); font-size: 10px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 6px; }
+.heatcell {
+  display: flex; align-items: center; justify-content: center;
+  height: 22px; border-radius: 3px; font-size: 10px; font-variant-numeric: tabular-nums;
+}
+.heatcell--nei { background: var(--surface-2); border: 1px dashed var(--border-strong); color: var(--ink-3); }
+.heatcell--missing { background: transparent; border: 1px solid var(--border); color: var(--ink-3); }
+.heat-1, .heat-2, .heat-3 { color: var(--ink); }
+.heat-4, .heat-5 { color: #fff; }
+
+.mini-charts { display: grid; gap: 16px; margin-top: 12px; }
+@media (min-width: 640px) { .mini-charts { grid-template-columns: 1fr 1fr; } }
+.mini-chart__title {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--ink-3); margin-bottom: 4px;
+}
+.radar { max-width: 320px; width: 100%; height: auto; display: block; margin: 0 auto; }
 
 .status-strip {
   display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap;

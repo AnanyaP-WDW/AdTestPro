@@ -30,7 +30,10 @@
             <td class="tnum">{% if r.overall_mean is not none %}{{ '%.2f'|format(r.overall_mean) }}{% else %}—{% endif %}</td>
             <td><span class="chip">{{ r.model }}</span></td>
             <td class="small muted">{{ r.summary if r.summary else '—' }}</td>
-            <td><a class="link" href="/runs/{{ r.evaluation_id }}">Open</a></td>
+            <td>
+                <a class="link" href="/runs/{{ r.evaluation_id }}">Open</a>
+                {% if pdf_available %}<a class="link" href="/runs/{{ r.evaluation_id }}/report.pdf" style="margin-left:8px;">PDF</a>{% endif %}
+            </td>
         </tr>
         {% endfor %}
         </tbody>
