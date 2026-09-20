@@ -123,12 +123,14 @@ def test_apply_pushes_env_and_resets_client(monkeypatch):
     llm._sem = None
 
 
-def test_apply_clears_stale_key_and_base_url(monkeypatch):
+def test_apply_clears_stale_key_and_resets_base_url(monkeypatch):
+    from app.core.settings import DEFAULT_BASE_URL
+
     monkeypatch.setenv("OPENAI_API_KEY", "stale-key")
     monkeypatch.setenv("ADTESTPRO_BASE_URL", "https://stale")
     apply_settings(ProviderSettings())
-    assert os.getenv("OPENAI_API_KEY") is None
-    assert os.getenv("ADTESTPRO_BASE_URL") is None
+    assert os.getenv("OPENAI_API_KEY") is None  # no key -> cleared
+    assert os.getenv("ADTESTPRO_BASE_URL") == DEFAULT_BASE_URL  # blank -> OpenRouter
 
 
 def test_apply_leaves_unset_fields_on_env(monkeypatch):
@@ -151,19 +153,32 @@ def test_apply_flows_into_real_consumers(monkeypatch):
     assert llm._timeout_s() == 45.0
 
 
-def test_probe_success_rejection_and_unreachable(monkeypatch):
+def test_probe_hits_resolved_endpoint_and_reports_it(monkeypatch):
     import httpx
-    from app.core.settings import probe_connection
+    from app.core.settings import DEFAULT_BASE_URL, probe_connection
+
+    seen: dict = {}
 
     class _R:
         def __init__(self, code):
             self.status_code = code
 
-    monkeypatch.setattr(httpx, "get", lambda *a, **k: _R(200))
-    assert probe_connection("k", "") == (True, "connected")
+    def _get(url, **k):
+        seen["url"] = url
+        return _R(200)
+
+    monkeypatch.setattr(httpx, "get", _get)
+    ok, msg = probe_connection("k", "")  # blank -> OpenRouter default
+    assert ok and DEFAULT_BASE_URL in msg
+    assert seen["url"] == f"{DEFAULT_BASE_URL}/models"
+
     monkeypatch.setattr(httpx, "get", lambda *a, **k: _R(401))
-    ok, msg = probe_connection("bad", "")
-    assert not ok and "401" in msg
+    ok, msg = probe_connection("bad", "https://api.openai.com/v1")
+    assert not ok and "401" in msg and "api.openai.com" in msg
+
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: _R(404))
+    ok, msg = probe_connection("k", "https://example.test/v1")
+    assert not ok and "404" in msg
 
     def _boom(*a, **k):
         raise httpx.ConnectError("down")
@@ -171,6 +186,74 @@ def test_probe_success_rejection_and_unreachable(monkeypatch):
     monkeypatch.setattr(httpx, "get", _boom)
     ok, msg = probe_connection("k", "")
     assert not ok and "unreachable" in msg
+
+
+def test_resolve_base_url_defaults_to_openrouter():
+    from app.core.settings import DEFAULT_BASE_URL, resolve_base_url
+
+    assert resolve_base_url("") == DEFAULT_BASE_URL
+    assert resolve_base_url(None) == DEFAULT_BASE_URL
+    assert resolve_base_url("  ") == DEFAULT_BASE_URL
+    assert resolve_base_url("https://openrouter.ai/api/v1/") == DEFAULT_BASE_URL
+    assert resolve_base_url(" https://api.openai.com/v1 ") == "https://api.openai.com/v1"
+
+
+def test_apply_sets_openrouter_base_url_when_key_blank(monkeypatch):
+    from app.core.settings import DEFAULT_BASE_URL, resolve_base_url
+
+    monkeypatch.delenv("ADTESTPRO_BASE_URL", raising=False)
+    apply_settings(ProviderSettings(keys=[_key(key="sk-or-v1-abc")], active_key_id="k1"))
+    assert os.getenv("ADTESTPRO_BASE_URL") == DEFAULT_BASE_URL
+    assert resolve_base_url(os.getenv("ADTESTPRO_BASE_URL", "")) == DEFAULT_BASE_URL
+
+
+def test_effective_model_defaults_to_openrouter_model(monkeypatch):
+    from app.core.settings import DEFAULT_MODEL
+
+    monkeypatch.delenv("ADTESTPRO_MODEL", raising=False)
+    assert ProviderSettings().effective_model() == DEFAULT_MODEL
+
+
+def test_keyring_kill_switch_and_timeout(monkeypatch):
+    from app.core import settings as s
+
+    # kill-switch: no keychain access at all
+    monkeypatch.setenv("ADTESTPRO_DISABLE_KEYRING", "1")
+    assert s.keyring_available() is False
+    assert s.keyring_get("anything") is None
+
+    # a slow/hanging keychain call must return instead of blocking startup
+    monkeypatch.delenv("ADTESTPRO_DISABLE_KEYRING", raising=False)
+    import time
+    import keyring
+    monkeypatch.setattr(keyring, "get_password", lambda *a, **k: time.sleep(5) or "late")
+    monkeypatch.setattr(s, "KEYRING_TIMEOUT_S", 0.2)
+    started = time.perf_counter()
+    assert s.keyring_get("k") is None
+    assert time.perf_counter() - started < 2.0
+
+
+def test_mismatch_warnings(monkeypatch):
+    from app.core.settings import mismatch_warnings
+
+    monkeypatch.delenv("ADTESTPRO_MODEL", raising=False)
+    # OpenRouter key pointed at OpenAI
+    w = mismatch_warnings(ProviderSettings(
+        keys=[_key(key="sk-or-v1-abc", base_url="https://api.openai.com/v1")], active_key_id="k1"))
+    assert any("OpenRouter key" in m for m in w)
+    # OpenRouter endpoint but a bare OpenAI model id
+    w = mismatch_warnings(ProviderSettings(
+        keys=[_key(key="k", base_url="")], active_key_id="k1", model="gpt-4o-mini-2024-07-18"))
+    assert any("vendor/model" in m for m in w)
+    # OpenAI endpoint but a vendor-prefixed model id
+    w = mismatch_warnings(ProviderSettings(
+        keys=[_key(key="sk-openai", base_url="https://api.openai.com/v1")],
+        active_key_id="k1", model="openai/gpt-4o-mini"))
+    assert any("vendor prefix" in m for m in w)
+    # Matching OpenRouter config: no warnings
+    assert mismatch_warnings(ProviderSettings(
+        keys=[_key(key="sk-or-v1-abc", base_url="")], active_key_id="k1",
+        model="openai/gpt-4o-mini")) == []
 
 
 # ---------------- OS keychain storage (keyring) ----------------

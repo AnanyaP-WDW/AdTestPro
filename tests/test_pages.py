@@ -256,6 +256,28 @@ def test_u6_labels_rings_tables():
     assert r.text.count('scope="col"') >= 9 and 'scope="row"' in r.text
 
 
+def test_no_scores_panel_on_extraction_failure():
+    from tests.fake_client import FakeClient
+
+    base = full_fake(question_ids=("clarity",))
+
+    def handler(kw):
+        if "observable facts" in kw["messages"][0]["content"]:
+            return {"observations": []}  # always invalid -> extraction_invalid
+        return base.handler(kw)
+
+    app.state.llm_client = FakeClient(handler=handler)
+    try:
+        c = TestClient(app)
+        r = c.post("/evaluate", data=dict(FORM, question_ids="clarity"), files=_files())
+        assert r.status_code == 200
+        assert 'data-status="extraction_invalid"' in r.text
+        assert "No scores were produced" in r.text
+        assert "No scores were produced" not in c.get("/").text  # only on failed reports
+    finally:
+        app.state.llm_client = None
+
+
 def test_error_recovery_states_image_not_kept():
     from tests.fake_client import FakeClient
 

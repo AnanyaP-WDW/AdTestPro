@@ -22,9 +22,22 @@ from typing import Optional
 
 SETTINGS_FILENAME = "settings.local.json"  # gitignored; never commit
 
+# OpenRouter is the default provider: a blank Base URL resolves here, and the
+# default text model uses OpenRouter's vendor/model form.
+DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
+DEFAULT_MODEL = "openai/gpt-4o-mini"
+
 
 def default_path() -> Path:
     return Path(__file__).resolve().parents[2] / SETTINGS_FILENAME
+
+
+def resolve_base_url(raw: Optional[str]) -> str:
+    """One endpoint resolver used by the probe and the LLM client, so they agree.
+
+    Blank means the default provider (OpenRouter); trailing slashes are trimmed.
+    """
+    return (raw or "").strip().rstrip("/") or DEFAULT_BASE_URL
 
 
 def new_key_id() -> str:
@@ -45,10 +58,42 @@ def mask_key(key: str) -> str:
 # backend every helper is a no-op and secrets stay in the 0600 settings file.
 
 KEYRING_SERVICE = "adtestpro"
+KEYRING_TIMEOUT_S = 1.5  # never let a locked/headless keychain block startup
+
+
+def _keyring_disabled() -> bool:
+    """Kill-switch for headless/CI/locked-keychain environments."""
+    return bool(os.getenv("ADTESTPRO_DISABLE_KEYRING", "").strip())
+
+
+def _with_timeout(fn, default=None, timeout_s: Optional[float] = None):
+    """Run a possibly-blocking keychain call in a daemon thread with a timeout.
+
+    macOS Keychain can block indefinitely on a locked keychain or an unsigned
+    interpreter (permission prompt). We must never hang import/startup on it.
+    """
+    import threading
+    if timeout_s is None:
+        timeout_s = KEYRING_TIMEOUT_S
+
+    box: dict = {}
+
+    def run() -> None:
+        try:
+            box["v"] = fn()
+        except Exception:
+            box["v"] = default
+
+    t = threading.Thread(target=run, daemon=True)
+    t.start()
+    t.join(timeout_s)
+    return box.get("v", default)
 
 
 def keyring_available() -> bool:
     """True when a working OS keychain backend is importable and usable."""
+    if _keyring_disabled():
+        return False
     try:
         import keyring
         from keyring.backends import fail
@@ -58,21 +103,26 @@ def keyring_available() -> bool:
 
 
 def keyring_get(key_id: str) -> Optional[str]:
+    if _keyring_disabled():
+        return None
     import keyring
-    return keyring.get_password(KEYRING_SERVICE, key_id)
+    return _with_timeout(lambda: keyring.get_password(KEYRING_SERVICE, key_id))
 
 
 def keyring_set(key_id: str, secret: str) -> None:
+    if _keyring_disabled():
+        return
     import keyring
-    keyring.set_password(KEYRING_SERVICE, key_id, secret)
+    _with_timeout(lambda: keyring.set_password(KEYRING_SERVICE, key_id, secret),
+                  timeout_s=3.0)
 
 
 def keyring_delete(key_id: str) -> None:
+    if _keyring_disabled():
+        return
     import keyring
-    try:
-        keyring.delete_password(KEYRING_SERVICE, key_id)
-    except Exception:
-        pass  # already gone / backend unavailable: nothing to clean up
+    _with_timeout(lambda: keyring.delete_password(KEYRING_SERVICE, key_id),
+                  timeout_s=3.0)  # already gone / backend unavailable: nothing to clean up
 
 
 # Curated scoring-pool candidates, verified 2026-09-09 via the OpenRouter
@@ -162,7 +212,8 @@ class ProviderSettings:
         return k.base_url.strip() if k else ""
 
     def effective_model(self) -> str:
-        return self.model.strip() or os.getenv("ADTESTPRO_MODEL", "").strip()
+        return (self.model.strip() or os.getenv("ADTESTPRO_MODEL", "").strip()
+                or DEFAULT_MODEL)
 
     def effective_pool(self) -> list[str]:
         raw = self.models.strip() or os.getenv("ADTESTPRO_MODELS", "")
@@ -328,11 +379,8 @@ def apply_settings(settings: ProviderSettings) -> None:
         os.environ["OPENAI_API_KEY"] = key
     else:
         os.environ.pop("OPENAI_API_KEY", None)
-    base_url = settings.effective_base_url()
-    if base_url:
-        os.environ["ADTESTPRO_BASE_URL"] = base_url
-    else:
-        os.environ.pop("ADTESTPRO_BASE_URL", None)
+    base_url = resolve_base_url(settings.effective_base_url())
+    os.environ["ADTESTPRO_BASE_URL"] = base_url
     if settings.model.strip():
         os.environ["ADTESTPRO_MODEL"] = settings.model.strip()
     if settings.models.strip():
@@ -345,17 +393,40 @@ def apply_settings(settings: ProviderSettings) -> None:
 
 
 def probe_connection(api_key: str, base_url: str, timeout_s: float = 10.0) -> tuple[bool, str]:
-    """Lightweight provider reachability check. Returns (ok, message). Never logs the key."""
+    """Provider reachability check against the *resolved* endpoint (never logs the key).
+
+    Uses `GET {base}/models`, which OpenAI-compatible providers (OpenAI, OpenRouter)
+    expose, so the probe tests exactly where the pipeline will send calls.
+    """
     import httpx  # local import: keeps settings importable without http deps
 
-    base = (base_url.strip() or "https://openrouter.ai/api/v1").rstrip("/")
+    base = resolve_base_url(base_url)
     try:
-        r = httpx.get(f"{base}/key", headers={"Authorization": f"Bearer {api_key.strip()}"},
+        r = httpx.get(f"{base}/models", headers={"Authorization": f"Bearer {api_key.strip()}"},
                       timeout=max(1.0, timeout_s))
     except Exception as e:
-        return False, f"unreachable: {type(e).__name__}"
+        return False, f"unreachable: {type(e).__name__} · {base}"
     if r.status_code == 200:
-        return True, "connected"
+        return True, f"connected · {base}"
     if r.status_code in (401, 403):
-        return False, "key rejected (401/403)"
-    return False, f"unexpected status {r.status_code}"
+        return False, f"key rejected (401/403) · {base}"
+    return False, f"unexpected status {r.status_code} · {base}"
+
+
+def mismatch_warnings(settings: "ProviderSettings") -> list[str]:
+    """Warn-only checks: a key/model that doesn't match the resolved endpoint."""
+    key = settings.effective_api_key()
+    base = resolve_base_url(settings.effective_base_url())
+    model = settings.effective_model()
+    openrouter = "openrouter.ai" in base
+    warns: list[str] = []
+    if key.startswith("sk-or-") and not openrouter:
+        warns.append(f"This looks like an OpenRouter key, but calls go to {base}. "
+                     f"Set Base URL to {DEFAULT_BASE_URL}.")
+    if openrouter and "/" not in model:
+        warns.append(f"OpenRouter model ids look like 'vendor/model' (e.g. {DEFAULT_MODEL}); "
+                     f"'{model}' may be rejected.")
+    if not openrouter and "/" in model:
+        warns.append(f"Endpoint {base} expects a plain OpenAI model id, but '{model}' "
+                     "has a vendor prefix.")
+    return warns

@@ -26,11 +26,15 @@ from app.core.models import AudienceBrief, EvaluationResult
 from app.core import runs as runs_store
 from app.core.runs import RunRecordError
 from app.core.settings import (
+    DEFAULT_BASE_URL,
+    DEFAULT_MODEL,
     ApiKey,
     ProviderSettings,
     apply_settings,
+    mismatch_warnings,
     new_key_id,
     probe_connection,
+    resolve_base_url,
     save_settings,
 )
 from app.report.pdf import engine_available, render_pdf
@@ -259,7 +263,8 @@ def _settings_ctx(request: Request, *, saved: bool = False,
     active_id = active.id if active else ""
     rows = [{
         "id": k.id, "label": k.label or "(unnamed)", "masked": mask_key(k.key),
-        "base_url": k.base_url, "active": k.id == active_id,
+        "base_url": k.base_url, "endpoint": resolve_base_url(k.base_url),
+        "active": k.id == active_id,
         "has_secret": bool(k.key.strip()), "source": k.secret_source,
     } for k in cur.keys]
     revealed_value = ""
@@ -276,6 +281,8 @@ def _settings_ctx(request: Request, *, saved: bool = False,
         "keyring_available": keyring_available(), "keyring_enabled": cur.keyring_enabled,
         "supported_pool_models": SUPPORTED_POOL_MODELS, "vendor_names": VENDOR_NAMES,
         "selected_pool_models": selected, "pool_warning": pool_warning,
+        "provider_warnings": mismatch_warnings(cur),
+        "default_base_url": DEFAULT_BASE_URL, "default_model": DEFAULT_MODEL,
     }
 
 

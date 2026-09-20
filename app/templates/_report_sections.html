@@ -30,6 +30,16 @@
     </p>
     {% endif %}
 
+    {% if not has_ratings %}
+    <div class="alert alert--warn report__section" role="alert">
+        <p class="alert__title">No scores were produced</p>
+        <p>This run ended as “{{ status_label }}” before the panel answered, so there are no
+        dimension means, rating distributions, or heatmap. The cause is listed in the warnings below.</p>
+        <p>Try the run again. If extraction keeps failing, pick an image model that supports
+        JSON/structured output in <a class="link" href="/settings">Settings</a>.</p>
+    </div>
+    {% endif %}
+
     {% if result.trace.warnings %}
     <div class="alert alert--warn report__section" role="alert">
         <p class="alert__title">Warnings ({{ result.trace.warnings|length }})</p>

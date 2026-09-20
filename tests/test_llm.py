@@ -7,7 +7,14 @@ import pytest
 from pydantic import BaseModel
 
 from app.core import llm
-from app.core.llm import LLMConfigError, LLMError, LLMOutputError, LLMTimeout, complete_structured, model_pool
+from app.core.llm import (
+    MAX_LLM_CALLS,
+    LLMError,
+    LLMOutputError,
+    LLMTimeout,
+    complete_structured,
+    model_pool,
+)
 from app.core.models import EvaluationTrace
 from tests.fake_client import FakeClient
 
@@ -40,11 +47,12 @@ def test_model_pool_blank_pool_falls_back(monkeypatch):
     assert model_pool() == ["primary"]
 
 
-def test_model_pool_unset_model_raises(monkeypatch):
+def test_model_pool_defaults_when_unset(monkeypatch):
+    from app.core.settings import DEFAULT_MODEL
+
     monkeypatch.delenv("ADTESTPRO_MODEL", raising=False)
     monkeypatch.delenv("ADTESTPRO_MODELS", raising=False)
-    with pytest.raises(LLMConfigError):
-        model_pool()
+    assert model_pool() == [DEFAULT_MODEL]
 
 
 def test_json_mode_rejection_falls_back_once(monkeypatch):
@@ -187,3 +195,53 @@ def test_concurrency_respects_semaphore(monkeypatch):
     asyncio.run(main())
     assert active["peak"] <= 2, active
     llm._sem = None
+
+
+# ---------------- resilience: format ladder + repair budget + normalize ----------------
+
+def test_json_schema_rejection_leaves_room_for_repair(monkeypatch):
+    _env(monkeypatch)
+
+    def handler(kw):
+        rf = kw.get("response_format")
+        if rf and rf.get("type") == "json_schema":
+            raise RuntimeError("400 json_schema unsupported")
+        if "<repair>" in kw["messages"][1]["content"]:
+            return {"name": "fixed"}
+        return {"wrong": "shape"}  # format-free output is still invalid
+
+    fake = FakeClient(handler=handler)
+    out = asyncio.run(complete_structured(
+        model_cls=_M, system="s", user="u", prompt_version="p", stage="t",
+        client=fake, json_schema={"type": "object"},
+    ))
+    assert out.name == "fixed"
+    assert fake.calls[0]["response_format"]["type"] == "json_schema"
+    assert "response_format" not in fake.calls[2]  # downshift, then repair
+    assert fake.n_calls == 3
+
+
+def test_normalize_hook_runs_before_validation(monkeypatch):
+    _env(monkeypatch)
+
+    def normalize(data):
+        data["name"] = "patched"
+        return data
+
+    fake = FakeClient(handler=lambda kw: {"nam": "typo"})  # missing required field
+    out = asyncio.run(complete_structured(
+        model_cls=_M, system="s", user="u", prompt_version="p", stage="t",
+        client=fake, normalize=normalize,
+    ))
+    assert out.name == "patched"
+    assert fake.n_calls == 1  # normalization avoided a repair round-trip
+
+
+def test_total_calls_bounded(monkeypatch):
+    _env(monkeypatch)
+    fake = FakeClient(handler=lambda kw: {"wrong": "shape"})  # always invalid
+    with pytest.raises(LLMOutputError):
+        asyncio.run(complete_structured(
+            model_cls=_M, system="s", user="u", prompt_version="p", stage="t", client=fake,
+        ))
+    assert fake.n_calls <= MAX_LLM_CALLS

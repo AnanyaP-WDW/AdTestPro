@@ -1,4 +1,4 @@
-"""Bounded LLM adapter (F3). One shared client, typed failures, one repair max."""
+"""Bounded LLM adapter (F3). One shared client, typed failures, bounded repairs."""
 
 from __future__ import annotations
 
@@ -6,13 +6,18 @@ import asyncio
 import json
 import os
 import time
-from typing import Any, Optional, TypeVar
+from typing import Any, Callable, Optional, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
 from app.core.models import CallRecord, EvaluationTrace
+from app.core.settings import DEFAULT_MODEL, resolve_base_url
 
 T = TypeVar("T", bound=BaseModel)
+
+# Hard ceiling on provider calls for one structured request (initial + format
+# downshift + schema repair). Bounds cost while guaranteeing a repair attempt.
+MAX_LLM_CALLS = 3
 
 
 class LLMError(Exception):
@@ -81,7 +86,7 @@ def model_pool(client: Any = None) -> list[str]:
         return [model]
     if client is not None:
         return ["injected-fake"]
-    raise LLMConfigError("ADTESTPRO_MODEL is not set (exact model ID required)")
+    return [DEFAULT_MODEL]
 
 
 _client: Any = None
@@ -104,8 +109,8 @@ def shared_client() -> Any:
             raise LLMConfigError("OPENAI_API_KEY is not set")
         from openai import AsyncOpenAI
 
-        # ponytail: OpenAI-compatible endpoints (e.g. OpenRouter) need only a base URL + key.
-        base_url = os.getenv("ADTESTPRO_BASE_URL", "").strip() or None
+        # ponytail: blank base resolves to OpenRouter, matching the settings probe.
+        base_url = resolve_base_url(os.getenv("ADTESTPRO_BASE_URL", ""))
         _client = AsyncOpenAI(api_key=api_key, timeout=_timeout_s(), base_url=base_url)
     return _client
 
@@ -132,63 +137,81 @@ async def complete_structured(
     max_tokens: int = 2000,
     image_b64: Optional[str] = None,
     image_mime: Optional[str] = None,
+    normalize: Optional[Callable[[Any], Any]] = None,
+    json_schema: Optional[dict] = None,
 ) -> T:
-    """One structured call + at most one repair. Records model/version/tokens/latency/retries."""
-    use_client = client if client is not None else shared_client()
-    # ponytail: exact model required for real calls; injected fakes may label themselves.
-    use_model = model or os.getenv("ADTESTPRO_MODEL", "").strip() or (
-        "injected-fake" if client is not None else "")
-    if not use_model:
-        raise LLMConfigError("ADTESTPRO_MODEL is not set (exact model ID required)")
-    sem = _semaphore()
+    """Bounded structured call: at most `MAX_LLM_CALLS` provider calls.
 
+    A provider rejection of the requested response format downshifts once (to no
+    format) and does **not** consume the single schema-repair attempt, so a model
+    that rejects `json_object`/`json_schema` still gets one validation repair.
+    `normalize` optionally salvages common model mistakes before validation.
+    """
+    use_client = client if client is not None else shared_client()
+    # ponytail: exact model preferred; blank falls back to the OpenRouter default.
+    use_model = model or os.getenv("ADTESTPRO_MODEL", "").strip() or (
+        "injected-fake" if client is not None else DEFAULT_MODEL)
+    sem = _semaphore()
     messages = _messages(system, user, image_b64, image_mime)
-    attempts = 0
+
+    # Preferred format first, then a single format-free fallback. One downshift
+    # max keeps room for the repair inside MAX_LLM_CALLS.
+    preferred = ({"type": "json_schema",
+                  "json_schema": {"name": stage or "response", "schema": json_schema,
+                                  "strict": False}}
+                 if json_schema is not None else {"type": "json_object"})
+    ladder: list[Optional[dict]] = [preferred, None]
+
+    calls = 0
+    mode_idx = 0
+    repairs = 0
     last_error: Optional[str] = None
-    json_mode = True
     started = time.perf_counter()
     usage_in = usage_out = 0
     async with sem:
-        while attempts < 2:  # initial + one repair
+        while calls < MAX_LLM_CALLS:
+            response_format = ladder[mode_idx]
+            payload_user = user if repairs == 0 else (
+                user + f"\n\n<repair>Previous output failed validation: {last_error}. "
+                "Return ONLY valid JSON matching the schema.</repair>"
+            )
             try:
-                payload_user = user if attempts == 0 or not json_mode else (
-                    user + f"\n\n<repair>Previous output failed validation: {last_error}. "
-                    "Return ONLY valid JSON matching the schema.</repair>"
-                )
+                calls += 1
                 raw = await asyncio.wait_for(
                     _create(use_client, use_model, system, payload_user, temperature, max_tokens,
-                            image_b64, image_mime, json_mode=json_mode),
+                            image_b64, image_mime, response_format=response_format),
                     timeout=_timeout_s(),
                 )
                 text, u_in, u_out = _extract_text_and_usage(raw)
                 usage_in, usage_out = u_in, u_out
                 data = _loads_lenient(text)
+                if normalize is not None:
+                    data = normalize(data)
                 parsed = model_cls.model_validate(data)
-                _record(trace, stage, use_model, prompt_version, started, usage_in, usage_out, attempts)
+                _record(trace, stage, use_model, prompt_version, started, usage_in, usage_out, calls - 1)
+                if repairs and trace is not None:
+                    trace.repairs.append(f"{stage}: schema repair after {last_error}")
                 return parsed
             except asyncio.TimeoutError as e:
-                _record(trace, stage, use_model, prompt_version, started, 0, 0, attempts)
+                _record(trace, stage, use_model, prompt_version, started, 0, 0, calls - 1)
                 raise LLMTimeout(f"stage {stage}: provider timeout") from e
             except (json.JSONDecodeError, ValidationError, KeyError, TypeError, ValueError) as e:
                 last_error = str(e)[:500]
-                attempts += 1
-                if attempts >= 2:
-                    _record(trace, stage, use_model, prompt_version, started, usage_in, usage_out, attempts)
-                    raise LLMOutputError(f"stage {stage}: invalid structured output: {last_error}") from e
-                continue
+                if repairs < 1 and calls < MAX_LLM_CALLS:
+                    repairs += 1
+                    continue
+                _record(trace, stage, use_model, prompt_version, started, usage_in, usage_out, calls - 1)
+                raise LLMOutputError(f"stage {stage}: invalid structured output: {last_error}") from e
             except LLMError:
                 raise
-            except Exception as e:  # provider SDK errors -> typed failure, no retry loop
-                if json_mode:
-                    # ponytail: some models (e.g. gemini-*-image) reject json_object mode
-                    # outright; spend the repair attempt on one fallback without it.
-                    json_mode = False
-                    attempts += 1
-                    last_error = f"provider rejected request ({type(e).__name__}); retried without json_object mode"
+            except Exception as e:  # provider rejection: try the format-free fallback once
+                if mode_idx < len(ladder) - 1 and calls < MAX_LLM_CALLS:
+                    mode_idx += 1
+                    last_error = f"provider rejected response_format ({type(e).__name__})"
                     continue
-                _record(trace, stage, use_model, prompt_version, started, 0, 0, attempts)
+                _record(trace, stage, use_model, prompt_version, started, 0, 0, calls - 1)
                 raise LLMError(f"stage {stage}: provider error: {type(e).__name__}") from e
-    raise LLMOutputError(f"stage {stage}: exhausted repair budget")  # ponytail: unreachable guard
+    raise LLMOutputError(f"stage {stage}: exhausted retry budget")  # ponytail: unreachable guard
 
 
 def _messages(system: str, user: str, image_b64: Optional[str], image_mime: Optional[str]) -> list[dict]:
@@ -205,16 +228,16 @@ def _messages(system: str, user: str, image_b64: Optional[str], image_mime: Opti
 
 async def _create(client: Any, model: str, system: str, user: str, temperature: float,
                  max_tokens: int, image_b64: Optional[str], image_mime: Optional[str],
-                 json_mode: bool = True) -> Any:
-    # ponytail: json_object mode (not beta parse) so the injected fake needs only one method.
+                 response_format: Optional[dict] = None) -> Any:
+    # ponytail: response_format is a plain dict so the injected fake needs only one method.
     kwargs: dict[str, Any] = dict(
         model=model,
         messages=_messages(system, user, image_b64, image_mime),
         temperature=temperature,
         max_tokens=max_tokens,
     )
-    if json_mode:
-        kwargs["response_format"] = {"type": "json_object"}
+    if response_format is not None:
+        kwargs["response_format"] = response_format
     return await client.chat.completions.create(**kwargs)
 
 
