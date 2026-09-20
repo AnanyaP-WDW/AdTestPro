@@ -11,7 +11,7 @@
   <a href="https://github.com/AnanyaP-WDW/AdTestPro/actions/workflows/ci.yml"><img src="https://github.com/AnanyaP-WDW/AdTestPro/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/AnanyaP-WDW/AdTestPro/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-GPLv3%20%7C%20commercial-blue" alt="License: GPLv3 or commercial"></a>
   <img src="https://img.shields.io/badge/python-3.11-blue" alt="Python 3.11">
-  <img src="https://img.shields.io/badge/tests-161%20offline-brightgreen" alt="161 offline tests">
+  <img src="https://img.shields.io/badge/tests-179%20offline-brightgreen" alt="179 offline tests">
   <img src="https://img.shields.io/badge/built%20with-FastAPI-009485" alt="Built with FastAPI">
 </p>
 
@@ -57,7 +57,7 @@ writes a final score.
 
 | Capability | What you get |
 |---|---|
-| **Coverage panel, not fake people** | Up to 25 personas (default 12) spanning your pain points, interests, familiarity, price sensitivity, and skeptical→receptive stance. Every fact traces to your brief (`supplied`) vs. inference (`hypothesis + basis`). No names, no backstories, no sensitive attributes. |
+| **Coverage panel, not fake people** | Up to 25 personas (default 12) spanning your pain points, interests, familiarity, price sensitivity, and skeptical→receptive stance — plus **decision-relevant specificity**: each persona gets a concrete situation, job-to-be-done, current alternative, objections, proof needs, and switching cost. Every fact traces to your brief (`supplied`) vs. inference (`hypothesis + basis`). No names, no backstories, no sensitive attributes. |
 | **Observation vs. interpretation split** | Visible text (exact), brand, claims, CTA with evidence quotes and image regions — kept separate from tone/symbolism/persuasion reads. Missing logo, price, or CTA stays `unknown`, never invented. |
 | **Stable 1–5 rubrics** | Attention, clarity, relevance, credibility, action intent — each with behavioral anchors. Disagreement widens the range instead of averaging it away; minority views survive synthesis by construction. |
 | **Model hedge** | Optional `ADTESTPRO_MODELS` pool rotates models across personas during scoring, so one vendor's priors can't dominate every judgment. Image extraction uses a dedicated vision model. Per-call models recorded in receipts. |
@@ -74,9 +74,10 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Open `http://localhost:8000/settings`, add your provider key (OpenAI, or OpenRouter —
-set the key's Base URL to `https://openrouter.ai/api/v1`), and activate it. Keys are
-stored in gitignored `settings.local.json` (mode 0600); `.env` keys are not read.
+Open `http://localhost:8000/settings`, add your provider key, and activate it. A blank
+Base URL resolves to **OpenRouter** (`https://openrouter.ai/api/v1`); use
+`https://api.openai.com/v1` for an OpenAI-direct key. Keys are stored in gitignored
+`settings.local.json` (mode 0600); `.env` keys are not read.
 
 Models are chosen here too, in the **Settings** tab's **Models** section: the primary
 text model, an optional scoring pool (the tested checkboxes), the image model, and the
@@ -111,9 +112,9 @@ ADTESTPRO_MODELS=openai/gpt-4o-mini,anthropic/claude-sonnet-5,deepseek/deepseek-
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
 | Provider key | via UI | — | Add/activate in **Settings → Provider**; stored in `settings.local.json`, not read from `.env` |
-| Base URL | via UI | — | Per-key in **Settings → Provider** (e.g. OpenRouter); `ADTESTPRO_BASE_URL` env applies to the benchmark CLI only |
+| Base URL | via UI | OpenRouter | Per-key in **Settings → Provider**; blank resolves to `https://openrouter.ai/api/v1`. `ADTESTPRO_BASE_URL` env applies to the benchmark CLI only |
 | `OPENAI_API_KEY` | no | — | Used only by `benchmarks/evaluate.py` live runs and other direct `llm.shared_client` consumers |
-| `ADTESTPRO_MODEL` | no | `gpt-4o-mini-2024-07-18` | Primary model ID (vision-capable for extraction). Set in **Settings → Models** or via env |
+| `ADTESTPRO_MODEL` | no | `openai/gpt-4o-mini` | Primary model ID (vision-capable for extraction). Set in **Settings → Models** or via env; OpenRouter uses `vendor/model` ids |
 | `ADTESTPRO_MODELS` | no | — | Comma-separated pool rotated across personas during scoring (the debias hedge). Pick the tested checkboxes in **Settings → Models**, or via env |
 | `ADTESTPRO_IMAGE_MODEL` | no | primary model | Dedicated vision model for the single image-extraction call; must accept image inputs. Set in **Settings → Models** or via env |
 | `ADTESTPRO_MAX_CONCURRENCY` | no | `4` | Max concurrent provider calls |
@@ -121,6 +122,7 @@ ADTESTPRO_MODELS=openai/gpt-4o-mini,anthropic/claude-sonnet-5,deepseek/deepseek-
 | `ADTESTPRO_PIPELINE_TIMEOUT_S` | no | `300` | Whole-run wall-clock budget |
 | `ALLOWED_ORIGINS` | no | `http://localhost:8000,…` | CORS allowlist |
 | `ADTESTPRO_LOG_LEVEL` | no | `INFO` | Terminal log level |
+| `ADTESTPRO_DISABLE_KEYRING` | no | — | Set to `1` to skip the OS keychain entirely (headless/CI/locked keychains); secrets stay in the 0600 settings file |
 | `ADTESTPRO_REVISION` | no | — | Code revision stamped in receipts when git is unavailable (containers) |
 
 ## API
@@ -185,6 +187,14 @@ them. The consistency check is advisory-only (warns, never blocks); the respond
 fan-out fires N parallel calls (4-at-a-time), each tagged with its pool model.
 Every terminal run is then recorded to local SQLite for history.
 
+**Resilience.** Each LLM stage is capped at three provider calls: if the model rejects
+`json_schema`/`json_object`, the adapter drops the response format and still reserves one
+schema repair carrying the validation error. Slightly malformed extraction output is
+salvaged (a value without evidence is downgraded to `unknown` with a visible warning)
+rather than failing the whole run, and a failed image model is retried once on the
+primary model. Keychain access is bounded so a locked or headless keychain never blocks
+startup — set `ADTESTPRO_DISABLE_KEYRING=1` to skip it entirely.
+
 ## Settings & run history
 
 - **Settings** (nav bar) — **Provider** and **Models** sections: manage named
@@ -207,9 +217,22 @@ Every terminal run is then recorded to local SQLite for history.
 - `benchmarks/README.md` — PersonaBench / AdExtract-60 / AdScore-24 protocols, gate
   thresholds, and what's blocked on human data
 - `benchmarks/evaluate.py` — metrics + deterministic replay (`replay-cached`, `replay-fresh`)
-- 161 offline tests (`pytest tests/`) run the full pipeline on fixtures with zero network
+  + the generic-vs-specific persona ablation (`specificity --brief … --image …`)
+- 179 offline tests (`pytest tests/`) run the full pipeline on fixtures with zero network
 
 ## Research grounding
+
+**Persona specificity.** Personas are made *decision-relevant* — concrete situation,
+objections, proof needs, switching cost — rather than decorative. This follows the
+evidence: agents grounded in rich self-reports reach 82–86% of participants' own
+test–retest consistency vs **74% for demographics-only**, but gains **asymptote** once
+sufficient in-domain evidence is present (Park et al., 2024); and conditioning on
+detailed, *real* socio-demographic backstories reproduces human subgroup response
+distributions, while ungrounded detail risks amplifying stereotypes (Argyle et al.,
+2022/23). So specificity is a **differentiation mechanism grounded in the brief**, not a
+claim of representativeness — the panel stays a coverage panel, and the generic-vs-specific
+ablation (`benchmarks/evaluate.py specificity`) measures whether it actually increases
+response dispersion and attribute utilization.
 
 <details>
 <summary><strong>Academic (most-cited first)</strong></summary>

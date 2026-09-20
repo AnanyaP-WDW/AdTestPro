@@ -176,6 +176,102 @@ def replay_fresh(n: int = 5) -> dict:
             "max_sd": max(stab.values()) if stab else None, "pass": ok}
 
 
+# ---------------------------------------------------------------- specificity ablation (P3)
+
+_STOP = {
+    "that", "with", "this", "they", "their", "have", "from", "when", "what", "would",
+    "could", "about", "into", "than", "then", "them", "these", "those", "your", "you",
+    "and", "for", "the", "are", "not", "but", "its", "will", "can", "has", "was", "were",
+    "been", "more", "less", "most", "only", "also", "because", "before", "after", "while",
+    "over", "under", "just", "very", "much", "some", "any", "all", "each", "other", "such",
+}
+
+
+def _tokens(text: str) -> set[str]:
+    import re
+    return {w for w in re.findall(r"[a-z0-9]+", (text or "").lower())
+            if len(w) >= 4 and w not in _STOP}
+
+
+def generic_personas(personas: list) -> list:
+    """Strip decision-relevant specificity to reproduce the old generic panel."""
+    from app.core.pipeline import SPECIFICITY_FIELDS
+
+    return [p.model_copy(update={
+        "situation": "", "job_to_be_done": "", "current_solution": "",
+        "objections": [], "proof_needs": [], "switching_cost": "medium",
+        "inferred_hypotheses": [h for h in p.inferred_hypotheses
+                                if h.field.strip().lower() not in SPECIFICITY_FIELDS],
+    }) for p in personas]
+
+
+def attribute_utilization(responses, personas) -> float:
+    """Fraction of personas whose answers reference a persona-specific attribute."""
+    vocab = {
+        p.id: _tokens(" ".join([p.situation, p.job_to_be_done, p.current_solution,
+                                *p.objections, *p.proof_needs, *p.decision_criteria]))
+        for p in personas
+    }
+    if not responses:
+        return float("nan")
+    hits = sum(
+        1 for r in responses
+        if any(vocab.get(r.persona_id, set()) & _tokens(a.explanation) for a in r.answers)
+    )
+    return hits / len(responses)
+
+
+def _mean_sd(responses, qids) -> float:
+    sds = []
+    for q in qids:
+        ratings = [a.rating for r in responses for a in r.answers
+                   if a.question_id == q and a.rating is not None]
+        if len(ratings) > 1:
+            sds.append(statistics.pstdev(ratings))
+    return statistics.fmean(sds) if sds else 0.0
+
+
+def specificity_ablation(brief_data: dict, image_bytes: bytes, image_name: str,
+                         question_ids: list[str], panel: int = 12) -> dict:
+    """Generic-vs-specific respond ablation (needs a provider key).
+
+    Holds the ad, brief, and persona slots constant; only the decision-relevant
+    fields are stripped for the generic condition. Reports between-persona rating
+    SD, attribute utilization, and respond-token delta.
+    """
+    from app.core.models import EvaluationTrace, PersonaSet
+    from app.core.pipeline import collect_responses, run_pipeline, select_questions, verify_image
+
+    ctype = "image/png" if image_name.lower().endswith(".png") else "image/jpeg"
+    content, mime, _ = verify_image(image_bytes, image_name, ctype)
+    questions = select_questions(question_ids)
+    base = asyncio.run(run_pipeline(
+        brief_data=brief_data, image=content, filename=image_name, content_type=mime,
+        question_ids=question_ids, persona_count=panel))
+    ok_status = ("complete", "complete_with_warnings", "complete_high_disagreement")
+    if base.status not in ok_status or base.personas is None or base.extraction is None:
+        return {"benchmark_version": BENCHMARK_VERSION, "error": base.status, "pass": False}
+    generic_set = PersonaSet(coverage_label="coverage_panel",
+                             personas=generic_personas(base.personas.personas))
+    trace = EvaluationTrace(evaluation_id="ablation-generic", model=base.trace.model)
+    generic = asyncio.run(collect_responses(generic_set, base.extraction, questions, None, trace))
+    spec_sd = _mean_sd(base.responses, question_ids)
+    gen_sd = _mean_sd(generic, question_ids)
+    util = attribute_utilization(base.responses, base.personas.personas)
+    return {
+        "benchmark_version": BENCHMARK_VERSION,
+        "panel": len(base.personas.personas),
+        "questions": question_ids,
+        "specific_between_persona_sd": round(spec_sd, 4),
+        "generic_between_persona_sd": round(gen_sd, 4),
+        "specific_attribute_utilization": round(util, 3),
+        "specific_respond_tokens": sum(c.output_tokens for c in base.trace.calls
+                                       if c.stage == "respond"),
+        "generic_respond_tokens": sum(c.output_tokens for c in trace.calls if c.stage == "respond"),
+        "pass": bool(spec_sd >= gen_sd and util >= 0.3),
+    }
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -185,6 +281,11 @@ def main() -> None:
     sub.add_parser("replay-cached")
     f = sub.add_parser("replay-fresh")
     f.add_argument("--n", type=int, default=5)
+    s = sub.add_parser("specificity")
+    s.add_argument("--brief", required=True, help="JSON file with AudienceBrief fields")
+    s.add_argument("--image", required=True, help="ad image (PNG/JPEG)")
+    s.add_argument("--questions", default="clarity,relevance")
+    s.add_argument("--panel", type=int, default=12)
     args = ap.parse_args()
     if args.cmd == "metrics":
         pred = json.loads(Path(args.pred).read_text())
@@ -195,6 +296,11 @@ def main() -> None:
         print(json.dumps(replay_cached(), indent=2))
     elif args.cmd == "replay-fresh":
         print(json.dumps(replay_fresh(args.n), indent=2))
+    elif args.cmd == "specificity":
+        brief = json.loads(Path(args.brief).read_text())
+        image_path = Path(args.image)
+        print(json.dumps(specificity_ablation(brief, image_path.read_bytes(), image_path.name,
+                                              args.questions.split(","), args.panel), indent=2))
 
 
 if __name__ == "__main__":

@@ -3,7 +3,9 @@
 import math
 
 from benchmarks.evaluate import (
+    attribute_utilization,
     f1_pairwise,
+    generic_personas,
     mae,
     mean_bias,
     pairwise_accuracy,
@@ -70,3 +72,37 @@ def test_v2_persona_order_invariance():
     shuffled = list(base)
     random.shuffle(shuffled)
     assert aggregate(shuffled, ["clarity"]).overall_mean == ref
+
+
+def test_generic_personas_strip_specificity():
+    from app.core.models import PersonaSet
+    from tests.test_pipeline import persona_payload
+
+    personas = PersonaSet.model_validate(
+        {"coverage_label": "coverage_panel", "personas": [persona_payload(0)]}).personas
+    generic = generic_personas(personas)
+    g = generic[0]
+    assert g.situation == "" and g.objections == [] and g.proof_needs == []
+    assert g.switching_cost == "medium"
+    assert all(h.field.lower() not in
+               {"situation", "job_to_be_done", "current_solution", "objections",
+                "proof_needs", "switching_cost"}
+               for h in g.inferred_hypotheses)
+
+
+def test_attribute_utilization_counts_persona_references():
+    from app.core.models import PersonaResponse, PersonaSet
+    from tests.test_pipeline import persona_payload
+
+    personas = PersonaSet.model_validate(
+        {"coverage_label": "coverage_panel", "personas": [persona_payload(0)]}).personas
+    p = personas[0]
+    hit = PersonaResponse(persona_id=p.id, answers=[{
+        "question_id": "clarity", "rating": 4,
+        "explanation": f"I worry about {p.objections[0]} before committing",
+        "evidence_ids": ["o1"], "confidence": 60}])
+    miss = PersonaResponse(persona_id=p.id, answers=[{
+        "question_id": "clarity", "rating": 3,
+        "explanation": "The ad is fine", "evidence_ids": ["o1"], "confidence": 60}])
+    assert attribute_utilization([hit], personas) == 1.0
+    assert attribute_utilization([miss], personas) == 0.0
