@@ -4,23 +4,45 @@ Rules:
 - Output ONLY valid JSON matching the requested schema.
 - Output COMPACT single-line JSON: no pretty-printing, no indentation, no commentary.
 - Every persona MUST satisfy the hard audience constraints (age range, location, required interests/pain points coverage).
-- Mark user-supplied facts in supplied_facts; everything else goes in inferred_hypotheses with a short basis.
+- Grounded inference ONLY. Every field not taken from the brief must appear in
+  inferred_hypotheses with its exact field name and a short basis that cites a brief
+  fact or a documented category norm. Never invent identity trivia.
+- You MUST include one inferred_hypotheses entry for EACH of these exact field names:
+  situation, job_to_be_done, current_solution, objections, proof_needs, switching_cost.
+  A missing entry is treated as an ungrounded field.
+- Copy pain_emphasis and interest_emphasis VERBATIM from the slot (do not paraphrase or
+  fix spelling); the server also stamps them.
 - NEVER infer sensitive attributes (race, ethnicity, religion, sexual orientation, health conditions, political views, disability).
-- No decorative facts (pets, favorite restaurants, detailed occupations) unless relevant to the advertised category.
-- Fill the coverage slots given in the user message (pain-point emphasis, interest emphasis, familiarity, price sensitivity, stance). Do not invent new slots.
+- No decorative facts (names, employer names, income, education, pets, favorite restaurants) — specificity must be decision-relevant to the advertised category, never identity trivia.
+- Fill the coverage slots given in the user message (pain emphasis, interest emphasis,
+  familiarity, price, stance, decision_driver, top_objection, proof_need). Do not invent new slots.
+- Make each persona DECISION-RELEVANT and distinct:
+  - segment: role + situation + primary need in one specific sentence (at least 4 words); never a bare job title like "small business owner".
+  - situation: the concrete moment/context in which they meet this ad.
+  - job_to_be_done: the outcome they are trying to achieve.
+  - current_solution: what they use or do today instead.
+  - objections: 1-3 reasons they would NOT act (anchor on the slot's top_objection).
+  - proof_needs: 1-3 things that would convince them (anchor on the slot's proof_need).
+  - switching_cost: low|medium|high.
+  - decision_criteria: ordered, category-specific criteria.
 - Use low-variance, stable ordering (persona ids p01..pNN in slot order).
 
 Return EXACTLY this JSON shape (no other top-level keys):
 {"coverage_label": "coverage_panel",
- "personas": [{"id": "p01", "segment": "one-sentence segment description",
+ "personas": [{"id": "p01", "segment": "role + situation + primary need",
    "demographics": {"age": 30, "location": "from brief", "gender": null},
    "needs": ["need"], "pain_emphasis": "from slot", "interest_emphasis": "from slot",
    "category_familiarity": "new|casual|regular|expert",
    "price_sensitivity": "low|medium|high",
    "brand_familiarity": null,
-   "media_habits": "channels/habits", "decision_criteria": ["criterion"],
+   "media_habits": "channels/habits", "decision_criteria": ["ordered criterion"],
    "communication_style": "style", "stance": "skeptical|neutral|receptive",
+   "situation": "concrete context", "job_to_be_done": "desired outcome",
+   "current_solution": "what they do today", "objections": ["reason not to act"],
+   "proof_needs": ["what would convince them"], "switching_cost": "low|medium|high",
    "supplied_facts": ["fact traced to the brief"],
-   "inferred_hypotheses": [{"field": "name", "value": "inference", "basis": "why"}],
+   "inferred_hypotheses": [{"field": "situation", "value": "inference", "basis": "brief fact or category norm"}],
    "uncertainty_notes": []}]}
-PROMPT_VERSION: personas-v2
+Every new field (situation, job_to_be_done, current_solution, objections, proof_needs,
+switching_cost) needs an inferred_hypotheses entry with that exact field name + basis.
+PROMPT_VERSION: personas-v5

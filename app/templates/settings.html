@@ -42,6 +42,15 @@
             add a key here to make the app provider-ready.
         </p>
 
+        {% if provider_warnings %}
+        <div class="alert alert--warn" role="status">
+            <p class="alert__title">Provider configuration warning</p>
+            <ul class="warnings-list">
+                {% for w in provider_warnings %}<li>{{ w }}</li>{% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
         {% if key_rows %}
         <div class="key-list">
             {% for k in key_rows %}
@@ -49,7 +58,7 @@
                 <div class="key-row__main">
                     <span class="choice__title">{{ k.label }}{% if k.active %} · <span class="key-row__active">active</span>{% endif %}</span>
                     <span class="choice__hint">
-                        <code class="small muted">{{ k.masked }}</code>{% if k.base_url %} · {{ k.base_url }}{% endif %}
+                        <code class="small muted">{{ k.masked }}</code> → {{ k.endpoint }}
                         {% if not k.has_secret %} · <span class="key-row__missing">secret unavailable (keychain locked or removed)</span>{% endif %}
                     </span>
                 </div>
@@ -86,7 +95,7 @@
                     <div class="field">
                         <label class="field__label" for="edit_base_url_{{ k.id }}">Base URL</label>
                         <input class="input" type="text" id="edit_base_url_{{ k.id }}" name="edit_base_url" maxlength="200"
-                               value="{{ ef.get('base_url', k.base_url) }}" placeholder="Blank = provider default">
+                               value="{{ ef.get('base_url', k.base_url) }}" placeholder="Blank = OpenRouter ({{ default_base_url }})">
                     </div>
                 </div>
                 <div class="action-bar">
@@ -120,10 +129,15 @@
                 <div class="field">
                     <label class="field__label" for="key_base_url">Base URL</label>
                     <input class="input" type="text" id="key_base_url" name="key_base_url" maxlength="200"
-                           placeholder="https://openrouter.ai/api/v1" value="{{ key_form.get('base_url', '') }}">
-                    <p class="field__help">Blank = provider default. Set per key.</p>
+                           list="base-url-presets" placeholder="{{ default_base_url }}"
+                           value="{{ key_form.get('base_url', '') }}">
+                    <p class="field__help">Blank = OpenRouter (<code>{{ default_base_url }}</code>). Set per key; use an OpenAI URL for OpenAI-direct keys.</p>
                 </div>
             </div>
+            <datalist id="base-url-presets">
+                <option value="{{ default_base_url }}">OpenRouter</option>
+                <option value="https://api.openai.com/v1">OpenAI</option>
+            </datalist>
             <div class="action-bar">
                 <button type="submit" class="btn btn--primary">Add key</button>
             </div>
@@ -160,10 +174,10 @@
             <div class="field">
                 <label class="field__label" for="model">Primary text model</label>
                 <input class="input" type="text" id="model" name="model" maxlength="200"
-                       placeholder="openai/gpt-4o-mini"
+                       placeholder="{{ default_model }}"
                        value="{{ values.get('model', '') }}"
                        {% if field_errors.get('model') %}aria-invalid="true"{% endif %}>
-                <p class="field__help">Personas, scoring, synthesis, critic. Exact model id.</p>
+                <p class="field__help">Personas, scoring, synthesis, critic. Blank = <code>{{ default_model }}</code> (OpenRouter).</p>
                 {% if field_errors.get('model') %}<p class="field__error">{{ field_errors['model'] }}</p>{% endif %}
             </div>
 

@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.core import runs as runs_mod
+from app.routers import pages as pages_mod
 from tests.test_api import FORM, _files
 from tests.test_pipeline import full_fake
 
@@ -108,5 +109,55 @@ def test_storage_failure_never_breaks_a_run(monkeypatch):
         assert "Evaluation report" in r.text
         r2 = c.post("/api/evaluations", data=FORM, files=_files())
         assert r2.status_code == 200
+    finally:
+        app.state.llm_client = None
+
+
+def test_report_renders_visual_summary_charts():
+    qids = "attention,clarity,relevance"
+    app.state.llm_client = full_fake(question_ids=("attention", "clarity", "relevance"))
+    try:
+        c = TestClient(app)
+        c.post("/evaluate", data=dict(FORM, question_ids=qids), files=_files())
+        eid = runs_mod.list_runs()[0]["evaluation_id"]
+        html = c.get(f"/runs/{eid}").text
+    finally:
+        app.state.llm_client = None
+    assert "Visual summary" in html
+    for view in ("means", "distribution", "heatmap", "radar"):
+        assert f'data-view="{view}"' in html
+    assert 'class="cbar"' in html  # means / composition bars
+    assert "stack__seg" in html  # distribution
+    assert "heatcell" in html  # persona heatmap
+    assert "data:image/svg+xml;base64," in html  # radar profile image
+    assert "Dimension scores" in html and "Coverage panel" in html
+
+
+def test_download_button_tracks_pdf_engine(monkeypatch):
+    app.state.llm_client = full_fake()
+    try:
+        c = TestClient(app)
+        c.post("/evaluate", data=dict(FORM, question_ids="clarity"), files=_files())
+        eid = runs_mod.list_runs()[0]["evaluation_id"]
+
+        monkeypatch.setattr(pages_mod, "engine_available", lambda: True)
+        html = c.get(f"/runs/{eid}").text
+        assert f'href="/runs/{eid}/report.pdf"' in html
+        assert "Download PDF report" in html
+
+        monkeypatch.setattr(pages_mod, "engine_available", lambda: False)
+        assert "/report.pdf" not in c.get(f"/runs/{eid}").text
+    finally:
+        app.state.llm_client = None
+
+
+def test_runs_list_links_pdf_when_engine_available(monkeypatch):
+    app.state.llm_client = full_fake()
+    try:
+        c = TestClient(app)
+        c.post("/evaluate", data=dict(FORM, question_ids="clarity"), files=_files())
+        eid = runs_mod.list_runs()[0]["evaluation_id"]
+        monkeypatch.setattr(pages_mod, "engine_available", lambda: True)
+        assert f"/runs/{eid}/report.pdf" in c.get("/runs").text
     finally:
         app.state.llm_client = None

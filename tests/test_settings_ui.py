@@ -36,6 +36,21 @@ def _saved(monkeypatch):
 
 # ---------------- provider key store ----------------
 
+def test_settings_shows_endpoint_and_mismatch_warning(monkeypatch):
+    _saved(monkeypatch)
+    app.state.provider_settings = ProviderSettings(
+        keys=[_mk(label="OR", key="sk-or-v1-abc123456", base="")], active_key_id="k1")
+    c = TestClient(app)
+    html = c.get("/settings").text
+    assert "https://openrouter.ai/api/v1" in html  # effective endpoint shown
+
+    app.state.provider_settings = ProviderSettings(
+        keys=[_mk(label="OR", key="sk-or-v1-abc123456", base="https://api.openai.com/v1")],
+        active_key_id="k1")
+    html = c.get("/settings").text
+    assert "OpenRouter key" in html  # warn-only mismatch notice
+
+
 def test_settings_page_renders_masked_key_and_add_form():
     app.state.provider_settings = ProviderSettings(
         keys=[_mk(key="sk-or-v1-SECRETKEY123456789")], active_key_id="k1", model="m1")

@@ -171,18 +171,21 @@ The immediate goal is not to create vivid fictional biographies. It is to produc
 **Work**
 - Give each persona:
   - stable ID;
-  - audience segment label;
+  - audience segment label (role + situation + primary need, not a bare job title);
   - constrained demographics;
   - relevant needs and pain points;
   - category and brand familiarity;
   - price sensitivity;
   - media or shopping habits;
-  - decision criteria;
+  - decision criteria (ordered, category-specific);
   - communication style;
+  - decision-relevant specificity: situation, job-to-be-done, current solution,
+    objections, proof needs, switching cost;
   - supplied facts;
   - inferred hypotheses;
   - uncertainty notes.
-- Require every inferred field to include a short basis.
+- Require every inferred field to include a short basis tied to a brief fact or a
+  documented category norm; specificity must be decision-relevant, never identity trivia.
 - Exclude decorative facts such as pets, favorite restaurants, or detailed occupations unless relevant to the advertised category.
 - Do not infer sensitive attributes.
 

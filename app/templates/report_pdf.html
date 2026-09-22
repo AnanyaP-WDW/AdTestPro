@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+{# Standalone print layout for the downloadable PDF. It inlines app.css and then
+   includes the exact same report body as the web page, so UI and PDF agree. #}
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AdTestPro report{% if result %} — {{ result.evaluation_id }}{% endif %}</title>
+<meta name="author" content="AdTestPro">
+<meta name="description" content="Synthetic coverage-panel ad creative screening report">
+<style>{{ app_css|safe }}</style>
+<style>
+  @page {
+    size: A4;
+    margin: 15mm 13mm 16mm;
+    @bottom-center {
+      content: "AdTestPro · " counter(page) " / " counter(pages);
+      color: #63686f; font-size: 9px;
+    }
+  }
+  html, body { background: #fff; color: #16181d; }
+  body { font-size: 11px; padding: 0; margin: 0; }
+  .pdf-shell { max-width: none; margin: 0; padding: 0; }
+  .pdf-cover {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+    border-bottom: 3px solid #1e4bc8; padding-bottom: 12px; margin-bottom: 6px;
+  }
+  .pdf-cover__brand { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+  .pdf-cover__brand-wrap { display: flex; align-items: center; gap: 10px; }
+  .pdf-cover__logo { width: 36px; height: 36px; }
+  .pdf-cover__tag { font-size: 11px; color: #63686f; margin-top: 2px; }
+  .pdf-cover__meta { text-align: right; font-size: 10px; color: #454a53; }
+  .pdf-cover__meta strong { color: #16181d; }
+  .report__section { break-inside: auto; }
+  .report__heading { break-after: avoid; }
+  .card, .kpi, .score-card, .rec-list li, .cbar, .stack-row, .legend { break-inside: avoid; }
+  .score-card { border: 1px solid #e1e2dc; }
+  .table-wrap { overflow: visible; }
+  thead th, tbody th { position: static; box-shadow: none; }
+  details, details > * { display: block; }
+  details > summary { list-style: none; }
+  .ctx-thumb { width: 150px; height: 150px; }
+  /* WeasyPrint ignores min-width media queries, so pin fixed print columns. */
+  .ctx-grid { grid-template-columns: 150px 1fr; }
+  .kpi-row { grid-template-columns: repeat(4, 1fr); }
+  .score-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .mini-charts { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .chart-panels .chart-panel { display: block !important; }
+  .chart-panel + .chart-panel { margin-top: 14px; }
+</style>
+</head>
+<body>
+<main class="pdf-shell">
+  <header class="pdf-cover">
+    <div class="pdf-cover__brand-wrap">
+      {% if logo_uri %}<img class="pdf-cover__logo" src="{{ logo_uri }}" alt="">{% endif %}
+      <div>
+        <div class="pdf-cover__brand">AdTestPro</div>
+        <div class="pdf-cover__tag">Synthetic coverage-panel ad creative screening</div>
+      </div>
+    </div>
+    {% if result %}
+    <div class="pdf-cover__meta">
+      <div><strong>Report</strong> {{ result.evaluation_id }}</div>
+      <div>{{ result.trace.started_at.strftime('%Y-%m-%d %H:%M UTC') }}</div>
+      <div>Scale 1–5 · coverage panel</div>
+    </div>
+    {% endif %}
+  </header>
+  {% include "_report_sections.html" %}
+</main>
+</body>
+</html>

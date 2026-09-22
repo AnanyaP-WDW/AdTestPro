@@ -62,6 +62,7 @@ app.state.templates = templates
 # Runtime provider settings (Settings UI) override env; empty file = env as-is.
 from app.core.settings import apply_settings as _apply_settings  # noqa: E402
 from app.core.settings import load_settings as _load_settings  # noqa: E402
+from app.core.settings import resolve_base_url as _resolve_base_url  # noqa: E402
 
 app.state.provider_settings = _load_settings()
 _apply_settings(app.state.provider_settings)
@@ -79,4 +80,5 @@ def readiness_check():
     settings = app.state.provider_settings
     if not settings.is_configured:
         return {"ready": False, "missing": ["api_key"]}
-    return {"ready": True, "model": os.getenv("ADTESTPRO_MODEL", "gpt-4o-mini-2024-07-18")}
+    return {"ready": True, "model": settings.effective_model(),
+            "base_url": _resolve_base_url(settings.effective_base_url())}

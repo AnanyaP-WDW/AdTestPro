@@ -9,7 +9,20 @@ plus `replay-cached` (V2 bit-identical check) and `replay-fresh --n 5` (S6/V2 st
 venv/bin/python benchmarks/evaluate.py replay-cached
 venv/bin/python benchmarks/evaluate.py metrics --pred preds.json --human humans.json
 OPENAI_API_KEY=... venv/bin/python benchmarks/evaluate.py replay-fresh --n 5
+# Generic-vs-specific persona ablation (needs key): brief.json has AudienceBrief fields
+OPENAI_API_KEY=... venv/bin/python benchmarks/evaluate.py specificity \
+  --brief brief.json --image ad.png --questions clarity,relevance --panel 12
 ```
+
+## Persona specificity ablation (P3)
+
+Holds the ad, brief, and persona slots constant and strips only the decision-relevant
+fields (`situation`, `job_to_be_done`, `current_solution`, `objections`, `proof_needs`,
+`switching_cost`) for the generic condition. Reports between-persona rating SD, attribute
+utilization (fraction of answers naming a persona-specific attribute), and the respond-token
+delta. Provisional gate: `specific_between_persona_sd >= generic_between_persona_sd` and
+`specific_attribute_utilization >= 0.30`. This validates the *variance* half of the
+hypothesis without human data; the accuracy/fidelity half still requires PersonaBench-MVP.
 
 ## What's blocked on human participation (named blockers)
 

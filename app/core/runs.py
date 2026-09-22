@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from app.core.models import EvaluationResult
+from app.core.paths import REPO_ROOT, data_dir
 
 logger = logging.getLogger("adtestpro.runs")
 
@@ -27,7 +28,12 @@ class RunRecordError(ValueError):
 
 
 def default_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "data" / DB_FILENAME
+    return data_dir() / DB_FILENAME
+
+
+def _legacy_path() -> Path:
+    """Pre-data-dir location (repo/data); read once so history isn't lost."""
+    return REPO_ROOT / "data" / DB_FILENAME
 
 
 _SCHEMA = """
@@ -78,7 +84,14 @@ def summarize_result(result: EvaluationResult) -> str:
 
 def connect(path: Optional[Path] = None) -> sqlite3.Connection:
     """Short-lived connection per operation (thread-safe under TestClient + uvicorn)."""
-    path = Path(path) if path else default_path()
+    if path:
+        path = Path(path)
+    else:
+        path = default_path()
+        if not path.exists():
+            legacy = _legacy_path()
+            if legacy.exists():
+                path = legacy  # migrate on next write
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row

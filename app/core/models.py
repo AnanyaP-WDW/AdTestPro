@@ -10,9 +10,9 @@ PIPELINE_VERSION = "v0.1.0"
 SCHEMA_VERSION = "v0.1.0"
 MAX_PERSONAS = 25  # user-selectable panel size ceiling (schema-level bound)
 PROMPT_VERSIONS = {
-    "personas": "personas-v3",
+    "personas": "personas-v5",
     "extract_ad": "extract_ad-v2",
-    "respond": "respond-v2",
+    "respond": "respond-v3",
     "synthesize": "synthesize-v1",
     "consistency": "consistency-v2",
     "critic": "critic-v1",
@@ -124,6 +124,14 @@ class PersonaDemographics(BaseModel):
 
 
 class Persona(BaseModel):
+    """A coverage-panel respondent. Specificity is behavioural + evidence-grounded.
+
+    The fields added after `stance` make a persona *decision-relevant* (situation,
+    job-to-be-done, current alternative, objections, proof needs, switching cost)
+    rather than decorative. They are inferred with a basis or traced to the brief —
+    never identity trivia, and never sensitive attributes.
+    """
+
     id: str = Field(min_length=1, max_length=64)
     segment: str = Field(min_length=1, max_length=200)
     demographics: PersonaDemographics
@@ -137,6 +145,13 @@ class Persona(BaseModel):
     decision_criteria: list[str] = Field(default_factory=list)
     communication_style: str = Field(default="", max_length=300)
     stance: Literal["skeptical", "neutral", "receptive"] = "neutral"
+    # -- decision-relevant specificity (grounded inference; see personas prompt) --
+    situation: str = Field(default="", max_length=300)
+    job_to_be_done: str = Field(default="", max_length=300)
+    current_solution: str = Field(default="", max_length=300)
+    objections: list[str] = Field(default_factory=list, max_length=3)
+    proof_needs: list[str] = Field(default_factory=list, max_length=3)
+    switching_cost: Literal["low", "medium", "high"] = "medium"
     supplied_facts: list[str] = Field(default_factory=list)  # came from the user
     inferred_hypotheses: list[InferredAttribute] = Field(default_factory=list)
     uncertainty_notes: list[str] = Field(default_factory=list)

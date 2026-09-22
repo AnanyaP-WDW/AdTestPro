@@ -8,7 +8,7 @@ from dataclasses import replace
 from typing import Optional
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from pydantic import ValidationError
 
 from app.core.pipeline import (
@@ -24,36 +24,28 @@ from app.core.pipeline import (
 )
 from app.core.models import AudienceBrief, EvaluationResult
 from app.core import runs as runs_store
+from app.core import prefs as prefs_store
 from app.core.runs import RunRecordError
 from app.core.settings import (
+    DEFAULT_BASE_URL,
+    DEFAULT_MODEL,
     ApiKey,
     ProviderSettings,
     apply_settings,
+    mismatch_warnings,
     new_key_id,
     probe_connection,
+    resolve_base_url,
     save_settings,
+)
+from app.report.pdf import engine_available, render_pdf
+from app.report.view import (
+    QUESTION_LABELS,
+    STATUS_LABELS,
+    build_report_view,
 )
 
 router = APIRouter(tags=["pages"])
-
-# Human-readable labels; raw ids stay in data attributes for tests/provenance.
-STATUS_LABELS = {
-    "complete": ("Complete", "ok"),
-    "complete_with_warnings": ("Complete — with warnings", "warn"),
-    "complete_high_disagreement": ("Complete — high disagreement", "warn"),
-    "insufficient_evidence": ("Insufficient evidence", "warn"),
-    "persona_invalid": ("Brief rejected", "danger"),
-    "extraction_invalid": ("Ad could not be analyzed", "danger"),
-    "budget_exhausted": ("Time budget exceeded", "danger"),
-    "pipeline_error": ("Run failed", "danger"),
-}
-QUESTION_LABELS = {
-    "attention": "Attention",
-    "clarity": "Clarity",
-    "relevance": "Relevance",
-    "credibility": "Credibility",
-    "action_intent": "Action intent",
-}
 
 THUMB_MAX_PX = 320  # bounded report thumbnail; originals are never stored
 
@@ -70,13 +62,23 @@ def _readiness(request: Request) -> tuple[bool, list[str]]:
     return False, ["Provider API key"]
 
 
-def _display_ctx(qids: list[str]) -> dict:
-    """Shared display maps for templates: labels, full question text."""
-    return {
-        "q_labels": QUESTION_LABELS,
-        "q_texts": {q.id: q.text for q in QUESTIONS.values()},
-        "selected_labels": [QUESTION_LABELS.get(q, q) for q in qids],
-    }
+def _app_css() -> str:
+    """Inline the app stylesheet so the PDF renders without fetching URLs."""
+    try:
+        from pathlib import Path
+        return (Path(__file__).resolve().parents[1] / "static" / "app.css").read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
+def _asset_data_uri(filename: str) -> str:
+    """Inline a repo asset (e.g. the logo) as a data URI for the PDF cover."""
+    try:
+        from pathlib import Path
+        raw = (Path(__file__).resolve().parents[2] / "assets" / filename).read_bytes()
+        return "data:image/svg+xml;base64," + base64.b64encode(raw).decode("ascii")
+    except OSError:
+        return ""
 
 
 def _thumbnail_uri(content: bytes, mime: str) -> Optional[str]:
@@ -116,12 +118,23 @@ def _field_errors(form: dict) -> dict[str, str]:
 @router.get("/", response_class=HTMLResponse)
 async def form_page(request: Request):
     ready, missing = _readiness(request)
+    prefs = prefs_store.load_prefs()
     return _templates(request).TemplateResponse(request, "form.html", {
         "ready": ready, "ready_missing": missing, "nav": "evaluate",
-        "form_values": {}, "field_errors": {}, "question_ids_list": QUESTION_IDS,
+        "form_values": prefs_store.form_values(prefs), "field_errors": {},
+        "selected_questions": prefs_store.question_ids(prefs),
+        "question_ids_list": QUESTION_IDS,
         "q_texts": {q.id: q.text for q in QUESTIONS.values()},
-        "persona_count_default": PERSONA_COUNT, "persona_count_max": MAX_PERSONAS,
+        "persona_count_default": prefs_store.persona_count(prefs, PERSONA_COUNT),
+        "persona_count_max": MAX_PERSONAS,
     })
+
+
+@router.post("/preferences/clear")
+async def clear_preferences():
+    """Forget the remembered evaluation-form inputs (never stored the image)."""
+    prefs_store.clear_prefs()
+    return RedirectResponse(url="/", status_code=303)
 
 
 def _render_form_error(request: Request, status: int, title: str, errors: dict[str, str],
@@ -137,51 +150,15 @@ def _render_form_error(request: Request, status: int, title: str, errors: dict[s
     }, status_code=status)
 
 
-def _results_ctx(result, qids: list[str], thumb_uri, persona_count_fallback: int = 0) -> dict:
-    """Shared report context for fresh runs and stored history (results.html)."""
-    obs_ids = {o.id for o in result.extraction.observations} if result.extraction else set()
-    response_map = {r.persona_id: r.answers for r in result.responses}
-    response_models = {r.persona_id: r.model for r in result.responses}
-    rated = [q for q in result.scores.per_question if q.mean is not None]
-    highest = max(rated, key=lambda q: q.mean) if rated else None
-    lowest = min(rated, key=lambda q: q.mean) if rated else None
-    stance_counts: dict[str, int] = {}
-    fam_counts: dict[str, int] = {}
-    if result.personas:
-        for p in result.personas.personas:
-            stance_counts[p.stance] = stance_counts.get(p.stance, 0) + 1
-            fam_counts[p.category_familiarity] = fam_counts.get(p.category_familiarity, 0) + 1
-    # Debias receipt: which models actually scored, from how many vendors.
-    from app.core.settings import VENDOR_NAMES, pool_vendors  # local: avoid import churn
-
-    scoring_models: list[str] = []
-    for c in result.trace.calls:
-        if c.stage == "respond" and c.model not in scoring_models:
-            scoring_models.append(c.model)
-    extraction_models = [c.model for c in result.trace.calls if c.stage == "extraction"][:1]
-    vendors = pool_vendors(scoring_models)
-    vendor_txt = ", ".join(VENDOR_NAMES.get(v, v) for v in vendors) if vendors else "—"
-    mix_note = None
-    if scoring_models:
-        mix_note = (f"Scored by {len(scoring_models)} model(s) across {len(vendors)} "
-                    f"vendor(s) [{vendor_txt}]")
-        if len(vendors) == 1:
-            mix_note += " — single-family pool, family bias not hedged"
-    return {
-        "result": result,
-        "status_label": STATUS_LABELS.get(result.status, (result.status, "warn"))[0],
-        "status_kind": STATUS_LABELS.get(result.status, (result.status, "warn"))[1],
-        "thumb_uri": thumb_uri,
-        "obs_ids": obs_ids,
-        "response_map": response_map,
-        "response_models": response_models,
-        "panel_size": len(result.personas.personas) if result.personas else persona_count_fallback,
-        "highest": highest, "lowest": lowest,
-        "stance_counts": stance_counts, "fam_counts": fam_counts,
-        "scoring_models": scoring_models, "extraction_models": extraction_models,
-        "mix_note": mix_note,
-        **_display_ctx(qids),
-    }
+def _results_ctx(result, qids: list[str], thumb_uri, persona_count_fallback: int = 0,
+                 pdf_available: bool = False) -> dict:
+    """Shared report context for fresh runs and stored history (results.html + PDF)."""
+    ctx = build_report_view(result, qids)
+    ctx["thumb_uri"] = thumb_uri
+    ctx["pdf_available"] = pdf_available
+    if not ctx["panel_size"]:
+        ctx["panel_size"] = persona_count_fallback
+    return ctx
 
 
 @router.post("/evaluate", response_class=HTMLResponse)
@@ -233,6 +210,12 @@ async def evaluate_page(
         return _render_form_error(request, 422, "Fix the highlighted fields and resubmit.",
                                   errors, keep, qids)
 
+    # Remember the valid inputs for next time (never the image).
+    try:
+        prefs_store.save_prefs(prefs_store.snapshot(brief_data, persona_count, qids))
+    except OSError:
+        pass  # a read-only data dir must never break a run
+
     content = await image.read(MAX_IMAGE_BYTES + 2)
     try:
         content, mime, checksum = verify_image(content, image.filename or "upload",
@@ -256,11 +239,13 @@ async def evaluate_page(
                                      "result": None, "ready": _readiness(request)[0],
                                      "nav": "evaluate", "form_values": keep}, status_code=502)
 
+    thumb_uri = _thumbnail_uri(content, mime)
+    recorded = runs_store.record(result, thumb_uri)
     ctx = {
         "error": None, "ready": _readiness(request)[0], "nav": "evaluate",
-        **_results_ctx(result, qids, _thumbnail_uri(content, mime), persona_count),
+        **_results_ctx(result, qids, thumb_uri, persona_count,
+                       pdf_available=recorded is not None),
     }
-    runs_store.record(result, ctx["thumb_uri"])
     return tpl.TemplateResponse(request, "results.html", ctx)
 
 
@@ -296,7 +281,8 @@ def _settings_ctx(request: Request, *, saved: bool = False,
     active_id = active.id if active else ""
     rows = [{
         "id": k.id, "label": k.label or "(unnamed)", "masked": mask_key(k.key),
-        "base_url": k.base_url, "active": k.id == active_id,
+        "base_url": k.base_url, "endpoint": resolve_base_url(k.base_url),
+        "active": k.id == active_id,
         "has_secret": bool(k.key.strip()), "source": k.secret_source,
     } for k in cur.keys]
     revealed_value = ""
@@ -313,6 +299,8 @@ def _settings_ctx(request: Request, *, saved: bool = False,
         "keyring_available": keyring_available(), "keyring_enabled": cur.keyring_enabled,
         "supported_pool_models": SUPPORTED_POOL_MODELS, "vendor_names": VENDOR_NAMES,
         "selected_pool_models": selected, "pool_warning": pool_warning,
+        "provider_warnings": mismatch_warnings(cur),
+        "default_base_url": DEFAULT_BASE_URL, "default_model": DEFAULT_MODEL,
     }
 
 
@@ -504,6 +492,7 @@ async def runs_page(request: Request):
         "ready": ready, "ready_missing": missing, "nav": "runs",
         "rows": rows, "db_error": db_error, "q_labels": QUESTION_LABELS,
         "status_labels": {k: v[0] for k, v in STATUS_LABELS.items()},
+        "pdf_available": engine_available(),
     })
 
 
@@ -520,5 +509,29 @@ async def run_detail_page(request: Request, evaluation_id: str):
                                     {**base, "error": "Run not found or stored in an older format.",
                                      "result": None}, status_code=404)
     ctx = {**base, "error": None,
-           **_results_ctx(result, row["question_ids"], row["thumb_uri"])}
+           **_results_ctx(result, row["question_ids"], row["thumb_uri"],
+                          pdf_available=engine_available())}
     return tpl.TemplateResponse(request, "results.html", ctx)
+
+
+@router.get("/runs/{evaluation_id}/report.pdf")
+async def run_report_pdf(request: Request, evaluation_id: str):
+    """Downloadable PDF of a stored run, rendered from the same view as the page."""
+    tpl = _templates(request)
+    if not engine_available():
+        return Response("PDF export is unavailable: WeasyPrint is not installed.",
+                        status_code=503, media_type="text/plain")
+    try:
+        row = runs_store.get_run(evaluation_id)
+        result = EvaluationResult.model_validate(row["result"])
+    except (RunRecordError, ValidationError):
+        return Response("Run not found.", status_code=404, media_type="text/plain")
+    ctx = _results_ctx(result, row["question_ids"], row["thumb_uri"], pdf_available=True)
+    ctx["for_pdf"] = True
+    ctx["app_css"] = _app_css()
+    ctx["logo_uri"] = _asset_data_uri("logo.svg")
+    html = tpl.env.get_template("report_pdf.html").render(**ctx)
+    pdf = render_pdf(html, base_url=str(request.base_url))
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="adtestpro-{evaluation_id}.pdf"'})

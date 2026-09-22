@@ -256,6 +256,60 @@ def test_u6_labels_rings_tables():
     assert r.text.count('scope="col"') >= 9 and 'scope="row"' in r.text
 
 
+def test_form_prefills_saved_inputs():
+    from app.core import prefs as prefs_mod
+
+    prefs_mod.save_prefs(prefs_mod.snapshot(
+        {"product_description": "Saved bottle", "campaign_objective": "Launch",
+         "age_min": "25", "age_max": "40", "location": "Austin",
+         "interests": "running", "pain_points": "waste",
+         "category_familiarity": "regular"}, 7, ["clarity"]))
+    c = TestClient(app)
+    html = c.get("/").text
+    assert "Saved bottle" in html  # brief remembered
+    assert 'value="7"' in html  # panel size remembered
+    assert "Clear saved inputs" in html
+
+
+def test_successful_run_saves_and_clear_removes():
+    from app.core import prefs as prefs_mod
+
+    app.state.llm_client = full_fake()
+    try:
+        c = TestClient(app)
+        c.post("/evaluate", data=dict(FORM, question_ids="clarity"), files=_files())
+        saved = prefs_mod.load_prefs()
+        assert saved["product_description"] == FORM["product_description"]
+        assert saved["question_ids"] == ["clarity"]
+        r = c.post("/preferences/clear")
+        assert r.status_code in (200, 303)
+        assert prefs_mod.load_prefs() == {}
+    finally:
+        app.state.llm_client = None
+
+
+def test_no_scores_panel_on_extraction_failure():
+    from tests.fake_client import FakeClient
+
+    base = full_fake(question_ids=("clarity",))
+
+    def handler(kw):
+        if "observable facts" in kw["messages"][0]["content"]:
+            return {"observations": []}  # always invalid -> extraction_invalid
+        return base.handler(kw)
+
+    app.state.llm_client = FakeClient(handler=handler)
+    try:
+        c = TestClient(app)
+        r = c.post("/evaluate", data=dict(FORM, question_ids="clarity"), files=_files())
+        assert r.status_code == 200
+        assert 'data-status="extraction_invalid"' in r.text
+        assert "No scores were produced" in r.text
+        assert "No scores were produced" not in c.get("/").text  # only on failed reports
+    finally:
+        app.state.llm_client = None
+
+
 def test_error_recovery_states_image_not_kept():
     from tests.fake_client import FakeClient
 

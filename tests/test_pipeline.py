@@ -59,23 +59,41 @@ def persona_payload(i: int) -> dict:
     fams = ["new", "casual", "regular", "expert"]
     stances = ["skeptical", "neutral", "receptive"]
     prices = ["low", "medium", "high"]
+    objections = ["price", "trust", "effort", "fit", "timing"]
+    proofs = ["demo", "social_proof", "trial", "roi", "security"]
+    pain = pains[i % 2]
+    interest = interests[i % 2]
     return {
         "id": f"p{i + 1:02d}",
-        "segment": f"segment-{i + 1}",
+        "segment": f"Austin {pain} runner weighing {interest} options on a budget",
         "demographics": {"age": 25 + (i % 16), "location": "Austin, USA", "gender": None},
         "needs": [f"need-{i + 1}"],
-        "pain_emphasis": pains[i % 2],
-        "interest_emphasis": interests[i % 2],
+        "pain_emphasis": pain,
+        "interest_emphasis": interest,
         "category_familiarity": fams[i % 4],
         "price_sensitivity": prices[i % 3],
         "brand_familiarity": None,
         "media_habits": f"habit-{i + 1}",
-        "decision_criteria": [f"criterion-{i + 1}"],
+        "decision_criteria": [f"criterion-{i + 1}", "upfront cost"],
         "communication_style": "direct",
         "stance": stances[i % 3],
-        "supplied_facts": ["location: Austin, USA", f"pain: {pains[i % 2]}"],
-        "inferred_hypotheses": [{"field": "shopping_habit", "value": f"habit-value-{i + 1}",
-                                 "basis": "brief lists constrained budget"}],
+        "situation": f"researching options while juggling {pain}",
+        "job_to_be_done": f"handle {pain} without adding hassle",
+        "current_solution": f"improvising around {interest} today",
+        "objections": [f"{objections[i % 5]} concern blocks switching"],
+        "proof_needs": [f"needs {proofs[i % 5]} before committing"],
+        "switching_cost": prices[i % 3],
+        "supplied_facts": ["location: Austin, USA", f"pain: {pain}"],
+        "inferred_hypotheses": [
+            {"field": "shopping_habit", "value": f"habit-value-{i + 1}",
+             "basis": "brief lists constrained budget"},
+            {"field": "situation", "value": f"busy {pain}", "basis": "brief pain point"},
+            {"field": "job_to_be_done", "value": f"resolve {pain}", "basis": "brief pain point"},
+            {"field": "current_solution", "value": f"ad-hoc {interest}", "basis": "category norm"},
+            {"field": "objections", "value": objections[i % 5], "basis": "brief price sensitivity"},
+            {"field": "proof_needs", "value": proofs[i % 5], "basis": "category norm"},
+            {"field": "switching_cost", "value": prices[i % 3], "basis": "category norm"},
+        ],
         "uncertainty_notes": [],
     }
 
@@ -153,6 +171,124 @@ def full_fake(question_ids=("clarity", "relevance"), ratings=(4, 5), split_panel
 
 def run(coro):
     return asyncio.run(coro)
+
+
+# ---------------- specificity: coverage axes + grounding checks ----------------
+
+def test_coverage_matrix_adds_decision_axes():
+    slots = build_coverage_matrix(parse_brief(BRIEF), 12)
+    assert all(s["decision_driver"] and s["top_objection"] and s["proof_need"] for s in slots)
+    assert {s["decision_driver"] for s in slots} == {"price", "quality", "speed", "trust", "convenience"}
+    assert len({s["top_objection"] for s in slots}) == 5
+    assert len({s["proof_need"] for s in slots}) == 5
+
+
+def test_persona_specificity_issues():
+    good = PersonaSet.model_validate(
+        {"coverage_label": "coverage_panel", "personas": [persona_payload(0)]}).personas[0]
+    assert pipeline.persona_specificity_issues(good) == []
+    generic = good.model_copy(update={
+        "segment": "small business owner", "situation": "", "job_to_be_done": "",
+        "current_solution": "", "objections": [], "proof_needs": [],
+        "decision_criteria": [], "inferred_hypotheses": [],
+    })
+    issues = pipeline.persona_specificity_issues(generic)
+    assert any("segment too generic" in i for i in issues)
+    assert any("missing situation" in i for i in issues)
+    assert any("lacks basis" in i for i in issues)
+
+
+def test_validate_personas_flags_generic_persona_as_quality_warning():
+    generic = persona_payload(0)
+    generic.update({"segment": "marketer", "situation": "", "job_to_be_done": "",
+                    "current_solution": "", "objections": [], "proof_needs": [],
+                    "decision_criteria": [], "inferred_hypotheses": []})
+    ps = PersonaSet.model_validate(
+        {"coverage_label": "coverage_panel", "personas": [generic, persona_payload(1)]})
+    # hard constraints still pass; specificity is advisory
+    assert validate_personas_deterministic(ps, parse_brief(BRIEF)) == []
+    quality = pipeline.persona_quality_warnings(ps, parse_brief(BRIEF))
+    assert any("segment too generic" in w for w in quality)
+
+
+def test_slot_values_stamped_and_basis_is_advisory():
+    base = full_fake(question_ids=("clarity",))
+
+    def handler(kw):
+        if "respondent profiles" in kw["messages"][0]["content"]:
+            personas = [persona_payload(i) for i in range(12)]
+            for p in personas:
+                p["interest_emphasis"] = "paraphrased interest"  # model drift
+                p["inferred_hypotheses"] = [
+                    h for h in p["inferred_hypotheses"] if h["field"] != "situation"]
+            return {"coverage_label": "coverage_panel", "personas": personas}
+        return base.handler(kw)
+
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"],
+                           client=FakeClient(handler=handler)))
+    assert res.status in ("complete", "complete_with_warnings")
+    # server-stamped slot values restore exact coverage despite paraphrase
+    assert {p.interest_emphasis for p in res.personas.personas} <= {"running", "coffee"}
+    assert any("persona-quality" in w for w in res.trace.warnings)
+    assert not any("coverage: interest" in w for w in res.trace.warnings)
+
+
+# ---------------- resilience: extraction salvage / fallback / consistency scope ----
+
+def test_extraction_salvages_unevidenced_observation():
+    base_handler = full_fake(question_ids=("clarity",)).handler
+
+    def handler(kw):
+        if "observable facts" in kw["messages"][0]["content"]:
+            payload = extraction_payload()
+            payload["observations"].append(
+                {"id": "oX", "field": "cta", "value": "Buy now",
+                 "evidence_quote": None, "region": None, "confidence": 88})
+            return payload
+        return base_handler(kw)
+
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"],
+                           client=FakeClient(handler=handler)))
+    assert res.status in ("complete", "complete_with_warnings")
+    assert any("extraction-salvage" in w for w in res.trace.warnings)
+    salvaged = next(o for o in res.extraction.observations if o.id == "oX")
+    assert salvaged.value is None and salvaged.confidence == 0
+
+
+def test_extraction_falls_back_to_primary_model(monkeypatch):
+    monkeypatch.setenv("ADTESTPRO_IMAGE_MODEL", "fake-image-model")
+    base_handler = full_fake(question_ids=("clarity",)).handler
+
+    def handler(kw):
+        if "observable facts" in kw["messages"][0]["content"]:
+            if kw.get("model") == "fake-image-model":
+                raise RuntimeError("image model unavailable")
+            return extraction_payload()
+        return base_handler(kw)
+
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"],
+                           client=FakeClient(handler=handler)))
+    assert res.status in ("complete", "complete_with_warnings")
+    assert any("retried on primary model" in w for w in res.trace.warnings)
+
+
+def test_consistency_prompt_defers_deterministic_checks():
+    captured = {}
+
+    def handler(kw):
+        captured["system"] = kw["messages"][0]["content"]
+        return {"valid": True, "issues": []}
+
+    brief = parse_brief(BRIEF)
+    personas = PersonaSet.model_validate(
+        {"coverage_label": "coverage_panel", "personas": [persona_payload(0)]})
+    asyncio.run(pipeline._llm_consistency_check(brief, personas, FakeClient(handler=handler), None))
+    system = captured["system"].lower()
+    assert "age outside" not in system
+    assert "already validated in code" in system
 
 
 def test_semaphore_rebinds_across_event_loops(monkeypatch):
