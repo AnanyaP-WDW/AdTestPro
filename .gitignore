@@ -140,7 +140,10 @@ PLAN.md
 start.md
 agent-flow.md
 
-# AdTestPro runtime data (never commit): Settings UI file (may hold an API key)
-# and the run-records database.
+# AdTestPro runtime data (never commit): Settings UI file (may hold an API key),
+# remembered form inputs, and the run-records database.
 settings.local.json
+preferences.json
+adtestpro.db
+adtestpro.db-*
 data/

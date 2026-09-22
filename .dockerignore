@@ -1,0 +1,14 @@
+# Never bake secrets or local runtime state into the image.
+.git
+.gitignore
+venv
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.env
+settings.local.json
+preferences.json
+data
+.DS_Store
+assets/*.png

@@ -8,7 +8,7 @@ from dataclasses import replace
 from typing import Optional
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from pydantic import ValidationError
 
 from app.core.pipeline import (
@@ -24,6 +24,7 @@ from app.core.pipeline import (
 )
 from app.core.models import AudienceBrief, EvaluationResult
 from app.core import runs as runs_store
+from app.core import prefs as prefs_store
 from app.core.runs import RunRecordError
 from app.core.settings import (
     DEFAULT_BASE_URL,
@@ -117,12 +118,23 @@ def _field_errors(form: dict) -> dict[str, str]:
 @router.get("/", response_class=HTMLResponse)
 async def form_page(request: Request):
     ready, missing = _readiness(request)
+    prefs = prefs_store.load_prefs()
     return _templates(request).TemplateResponse(request, "form.html", {
         "ready": ready, "ready_missing": missing, "nav": "evaluate",
-        "form_values": {}, "field_errors": {}, "question_ids_list": QUESTION_IDS,
+        "form_values": prefs_store.form_values(prefs), "field_errors": {},
+        "selected_questions": prefs_store.question_ids(prefs),
+        "question_ids_list": QUESTION_IDS,
         "q_texts": {q.id: q.text for q in QUESTIONS.values()},
-        "persona_count_default": PERSONA_COUNT, "persona_count_max": MAX_PERSONAS,
+        "persona_count_default": prefs_store.persona_count(prefs, PERSONA_COUNT),
+        "persona_count_max": MAX_PERSONAS,
     })
+
+
+@router.post("/preferences/clear")
+async def clear_preferences():
+    """Forget the remembered evaluation-form inputs (never stored the image)."""
+    prefs_store.clear_prefs()
+    return RedirectResponse(url="/", status_code=303)
 
 
 def _render_form_error(request: Request, status: int, title: str, errors: dict[str, str],
@@ -197,6 +209,12 @@ async def evaluate_page(
     if errors:
         return _render_form_error(request, 422, "Fix the highlighted fields and resubmit.",
                                   errors, keep, qids)
+
+    # Remember the valid inputs for next time (never the image).
+    try:
+        prefs_store.save_prefs(prefs_store.snapshot(brief_data, persona_count, qids))
+    except OSError:
+        pass  # a read-only data dir must never break a run
 
     content = await image.read(MAX_IMAGE_BYTES + 2)
     try:

@@ -62,6 +62,17 @@ def test_stored_payload_never_carries_secrets(tmp_path, monkeypatch):
     assert os.getenv("OPENAI_API_KEY") not in raw
 
 
+def test_connect_reads_legacy_db_location(tmp_path, monkeypatch):
+    from app.core import runs as r
+
+    legacy = tmp_path / "data" / r.DB_FILENAME
+    legacy.parent.mkdir()
+    r.save_run(_result("e1"), path=legacy)
+    monkeypatch.setattr(r, "default_path", lambda: tmp_path / "new.db")
+    monkeypatch.setattr(r, "_legacy_path", lambda: legacy)
+    assert r.get_run("e1")["status"] == "complete"
+
+
 def test_save_is_idempotent_per_evaluation_id(tmp_path):
     db = tmp_path / "t.db"
     save_run(_result("e1", mean=4.0), path=db)

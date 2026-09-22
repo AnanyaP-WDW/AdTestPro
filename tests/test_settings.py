@@ -214,6 +214,17 @@ def test_effective_model_defaults_to_openrouter_model(monkeypatch):
     assert ProviderSettings().effective_model() == DEFAULT_MODEL
 
 
+def test_load_settings_reads_legacy_location(tmp_path, monkeypatch):
+    from app.core import settings as s
+
+    legacy = tmp_path / "legacy.json"
+    legacy.write_text(json.dumps(
+        {"keys": [{"id": "k1", "label": "L", "key": "secret"}]}), encoding="utf-8")
+    monkeypatch.setattr(s, "default_path", lambda: tmp_path / "new.json")
+    monkeypatch.setattr(s, "_legacy_path", lambda: legacy)
+    assert s.load_settings().effective_api_key() == "secret"
+
+
 def test_keyring_kill_switch_and_timeout(monkeypatch):
     from app.core import settings as s
 

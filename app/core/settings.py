@@ -17,6 +17,8 @@ import json
 import os
 import secrets
 from dataclasses import dataclass, field
+
+from app.core.paths import REPO_ROOT, data_dir
 from pathlib import Path
 from typing import Optional
 
@@ -29,7 +31,12 @@ DEFAULT_MODEL = "openai/gpt-4o-mini"
 
 
 def default_path() -> Path:
-    return Path(__file__).resolve().parents[2] / SETTINGS_FILENAME
+    return data_dir() / SETTINGS_FILENAME
+
+
+def _legacy_path() -> Path:
+    """Pre-data-dir location (repo root); read once so settings aren't lost."""
+    return REPO_ROOT / SETTINGS_FILENAME
 
 
 def resolve_base_url(raw: Optional[str]) -> str:
@@ -331,7 +338,12 @@ class ProviderSettings:
 
 def load_settings(path: Optional[Path] = None) -> ProviderSettings:
     """Missing or corrupt file -> empty settings (env still applies to models)."""
-    path = path or default_path()
+    if path is None:
+        path = default_path()
+        if not path.exists():
+            legacy = _legacy_path()
+            if legacy.exists():
+                path = legacy  # migrate on next save
     try:
         return ProviderSettings.from_file_dict(json.loads(path.read_text(encoding="utf-8")))
     except (OSError, ValueError):
