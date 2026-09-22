@@ -198,15 +198,40 @@ def test_persona_specificity_issues():
     assert any("lacks basis" in i for i in issues)
 
 
-def test_validate_personas_flags_generic_persona():
+def test_validate_personas_flags_generic_persona_as_quality_warning():
     generic = persona_payload(0)
     generic.update({"segment": "marketer", "situation": "", "job_to_be_done": "",
                     "current_solution": "", "objections": [], "proof_needs": [],
                     "decision_criteria": [], "inferred_hypotheses": []})
     ps = PersonaSet.model_validate(
         {"coverage_label": "coverage_panel", "personas": [generic, persona_payload(1)]})
-    failures = validate_personas_deterministic(ps, parse_brief(BRIEF))
-    assert any("segment too generic" in f for f in failures)
+    # hard constraints still pass; specificity is advisory
+    assert validate_personas_deterministic(ps, parse_brief(BRIEF)) == []
+    quality = pipeline.persona_quality_warnings(ps, parse_brief(BRIEF))
+    assert any("segment too generic" in w for w in quality)
+
+
+def test_slot_values_stamped_and_basis_is_advisory():
+    base = full_fake(question_ids=("clarity",))
+
+    def handler(kw):
+        if "respondent profiles" in kw["messages"][0]["content"]:
+            personas = [persona_payload(i) for i in range(12)]
+            for p in personas:
+                p["interest_emphasis"] = "paraphrased interest"  # model drift
+                p["inferred_hypotheses"] = [
+                    h for h in p["inferred_hypotheses"] if h["field"] != "situation"]
+            return {"coverage_label": "coverage_panel", "personas": personas}
+        return base.handler(kw)
+
+    res = run(run_pipeline(brief_data=BRIEF, image=make_png(), filename="a.png",
+                           content_type="image/png", question_ids=["clarity"],
+                           client=FakeClient(handler=handler)))
+    assert res.status in ("complete", "complete_with_warnings")
+    # server-stamped slot values restore exact coverage despite paraphrase
+    assert {p.interest_emphasis for p in res.personas.personas} <= {"running", "coffee"}
+    assert any("persona-quality" in w for w in res.trace.warnings)
+    assert not any("coverage: interest" in w for w in res.trace.warnings)
 
 
 # ---------------- resilience: extraction salvage / fallback / consistency scope ----

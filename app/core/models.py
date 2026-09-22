@@ -10,7 +10,7 @@ PIPELINE_VERSION = "v0.1.0"
 SCHEMA_VERSION = "v0.1.0"
 MAX_PERSONAS = 25  # user-selectable panel size ceiling (schema-level bound)
 PROMPT_VERSIONS = {
-    "personas": "personas-v4",
+    "personas": "personas-v5",
     "extract_ad": "extract_ad-v2",
     "respond": "respond-v3",
     "synthesize": "synthesize-v1",

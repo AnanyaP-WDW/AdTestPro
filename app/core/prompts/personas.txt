@@ -7,6 +7,11 @@ Rules:
 - Grounded inference ONLY. Every field not taken from the brief must appear in
   inferred_hypotheses with its exact field name and a short basis that cites a brief
   fact or a documented category norm. Never invent identity trivia.
+- You MUST include one inferred_hypotheses entry for EACH of these exact field names:
+  situation, job_to_be_done, current_solution, objections, proof_needs, switching_cost.
+  A missing entry is treated as an ungrounded field.
+- Copy pain_emphasis and interest_emphasis VERBATIM from the slot (do not paraphrase or
+  fix spelling); the server also stamps them.
 - NEVER infer sensitive attributes (race, ethnicity, religion, sexual orientation, health conditions, political views, disability).
 - No decorative facts (names, employer names, income, education, pets, favorite restaurants) — specificity must be decision-relevant to the advertised category, never identity trivia.
 - Fill the coverage slots given in the user message (pain emphasis, interest emphasis,
@@ -40,4 +45,4 @@ Return EXACTLY this JSON shape (no other top-level keys):
    "uncertainty_notes": []}]}
 Every new field (situation, job_to_be_done, current_solution, objections, proof_needs,
 switching_cost) needs an inferred_hypotheses entry with that exact field name + basis.
-PROMPT_VERSION: personas-v4
+PROMPT_VERSION: personas-v5

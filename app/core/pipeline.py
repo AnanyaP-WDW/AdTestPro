@@ -289,17 +289,37 @@ def persona_specificity_issues(p: Persona) -> list[str]:
     return issues
 
 
+def stamp_slot_values(persona_set: PersonaSet, slots: list[dict]) -> PersonaSet:
+    """Server-assign coverage fields from the slot.
+
+    The model paraphrases (and occasionally misspells) the brief's pain points and
+    interests, which made the coverage check fail on valid panels. Stamping the
+    slot's exact values keeps coverage deterministic and byte-stable.
+    """
+    by_id = {s["id"]: s for s in slots}
+    stamped: list[Persona] = []
+    for p in persona_set.personas:
+        s = by_id.get(p.id)
+        if s is None:
+            stamped.append(p)
+            continue
+        stamped.append(p.model_copy(update={
+            "pain_emphasis": s["pain_emphasis"],
+            "interest_emphasis": s["interest_emphasis"],
+            "category_familiarity": s["category_familiarity"],
+            "price_sensitivity": s["price_sensitivity"],
+            "stance": s["stance"],
+        }))
+    return persona_set.model_copy(update={"personas": stamped})
+
+
 def validate_personas_deterministic(
     persona_set: PersonaSet, brief: AudienceBrief, expected_count: Optional[int] = None,
 ) -> list[str]:
-    """Field-level failures: constraints, coverage, panel size, duplicates, sensitive claims."""
+    """Hard constraints only (fatal): size, age, location, gender, provenance, sensitive, duplicates."""
     failures: list[str] = []
     if expected_count is not None and len(persona_set.personas) != expected_count:
         failures.append(f"coverage: panel size {len(persona_set.personas)} != requested {expected_count}")
-    pains_needed = {p.lower() for p in brief.pain_points}
-    interests_needed = {s.lower() for s in brief.interests}
-    pains_seen: set[str] = set()
-    interests_seen: set[str] = set()
     seen_sigs: dict[tuple, str] = {}
     for p in persona_set.personas:
         tag = f"persona {p.id}"
@@ -311,9 +331,6 @@ def validate_personas_deterministic(
             failures.append(f"{tag}: gender constraint violated")
         if not p.supplied_facts:
             failures.append(f"{tag}: no supplied_facts (reviewer cannot trace provenance)")
-        for hyp in p.inferred_hypotheses:
-            if not hyp.basis.strip():
-                failures.append(f"{tag}: inferred '{hyp.field}' lacks basis")
         blob = " ".join([
             p.segment, p.pain_emphasis, p.interest_emphasis, p.media_habits,
             " ".join(p.needs), " ".join(h.value for h in p.inferred_hypotheses),
@@ -322,25 +339,38 @@ def validate_personas_deterministic(
             if pat in blob:
                 failures.append(f"{tag}: unsupported sensitive claim ({pat.strip()})")
                 break
-        pains_seen.add(p.pain_emphasis.strip().lower())
-        interests_seen.add(p.interest_emphasis.strip().lower())
         sig = persona_signature(p)
         if sig in seen_sigs:
             failures.append(f"{tag}: near-duplicate of {seen_sigs[sig]}")
         else:
             seen_sigs[sig] = p.id
-        failures.extend(persona_specificity_issues(p))
-    # Panel-level decision diversity (bounded; duplicates already caught above).
+    return failures
+
+
+def persona_quality_warnings(persona_set: PersonaSet, brief: AudienceBrief) -> list[str]:
+    """Advisory specificity/coverage quality. Never fatal — surfaced as warnings."""
+    warnings: list[str] = []
+    pains_seen: set[str] = set()
+    interests_seen: set[str] = set()
+    seen_sigs: set[tuple] = set()
+    for p in persona_set.personas:
+        warnings.extend(persona_specificity_issues(p))
+        for hyp in p.inferred_hypotheses:
+            if not hyp.basis.strip():
+                warnings.append(f"persona {p.id}: inferred '{hyp.field}' lacks basis")
+        pains_seen.add(p.pain_emphasis.strip().lower())
+        interests_seen.add(p.interest_emphasis.strip().lower())
+        seen_sigs.add(persona_signature(p))
     n_personas = len(persona_set.personas)
     if n_personas >= 4 and len(seen_sigs) < min(n_personas, 4):
-        failures.append("panel: insufficient decision diversity across personas")
-    for need in pains_needed:
+        warnings.append("panel: insufficient decision diversity across personas")
+    for need in {x.lower() for x in brief.pain_points}:
         if need not in pains_seen and not any(need in s for s in pains_seen):
-            failures.append(f"coverage: pain point '{need}' missing from panel")
-    for need in interests_needed:
+            warnings.append(f"coverage: pain point '{need}' missing from panel")
+    for need in {x.lower() for x in brief.interests}:
         if need not in interests_seen and not any(need in s for s in interests_seen):
-            failures.append(f"coverage: interest '{need}' missing from panel")
-    return failures
+            warnings.append(f"coverage: interest '{need}' missing from panel")
+    return warnings
 
 
 async def generate_personas(
@@ -396,11 +426,11 @@ async def generate_personas(
     persona_set = _trim_overshoot(
         PersonaSet(coverage_label="coverage_panel", personas=renumbered), n, trace)
     persona_set.personas.sort(key=lambda p: p.id)
+    persona_set = stamp_slot_values(persona_set, slots)
     failures = validate_personas_deterministic(persona_set, brief, expected_count=n)
-    # One correction pass for deterministic constraint failures only. The LLM
-    # consistency verdict is advisory (checked after): hard constraints (age,
-    # location, gender, duplicates, coverage) are enforced in code, and checker
-    # false positives must not trigger a regeneration that can mangle a valid panel.
+    # One correction pass for HARD constraint failures only. Specificity/basis
+    # issues are advisory (see persona_quality_warnings) and never regenerate a
+    # panel: a missing basis string must not reject an otherwise valid run.
     if failures:
         if trace is not None:
             trace.repairs.append(f"personas: {failures}")
@@ -429,9 +459,13 @@ async def generate_personas(
             max_tokens=min(16000, 450 * n + 1000),
         )
         persona_set = _trim_overshoot(persona_set, n, trace)
+        persona_set = stamp_slot_values(persona_set, slots)
         failures = validate_personas_deterministic(persona_set, brief, expected_count=n)
         if failures:
             raise PersonaInvalid("; ".join(failures))
+    quality = persona_quality_warnings(persona_set, brief)
+    if quality and trace is not None:
+        trace.warnings.append("persona-quality: " + "; ".join(quality)[:500])
     # Advisory semantic review: hard constraints are deterministic (above).
     verdict_issues = await _llm_consistency_check(brief, persona_set, client, trace)
     if verdict_issues and trace is not None:

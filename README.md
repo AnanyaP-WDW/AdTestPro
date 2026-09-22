@@ -11,7 +11,7 @@
   <a href="https://github.com/AnanyaP-WDW/AdTestPro/actions/workflows/ci.yml"><img src="https://github.com/AnanyaP-WDW/AdTestPro/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/AnanyaP-WDW/AdTestPro/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-GPLv3%20%7C%20commercial-blue" alt="License: GPLv3 or commercial"></a>
   <img src="https://img.shields.io/badge/python-3.11-blue" alt="Python 3.11">
-  <img src="https://img.shields.io/badge/tests-179%20offline-brightgreen" alt="179 offline tests">
+  <img src="https://img.shields.io/badge/tests-189%20offline-brightgreen" alt="189 offline tests">
   <img src="https://img.shields.io/badge/built%20with-FastAPI-009485" alt="Built with FastAPI">
 </p>
 
@@ -93,11 +93,54 @@ WeasyPrint; it needs pango/cairo system libraries (the Docker image installs the
 macOS `brew install pango`). If they are missing the button is hidden and the route
 returns 503, so the app still runs.
 
-Docker alternative:
+### Docker
+
+**With Docker Compose (recommended):**
 
 ```bash
+# build and run (foreground — watch logs; Ctrl-C to stop)
 docker compose up --build
+
+# or run detached
+docker compose up --build -d
+open http://localhost:8000/settings   # add key → then http://localhost:8000/
+
+# verify
+curl localhost:8000/health           # {"status":"healthy"}
+curl localhost:8000/ready            # {"ready":true} when a key is active
+
+# logs / stop
+docker compose logs -f
+docker compose down                  # stop; data stays in volume adtestpro-data
+docker compose down -v               # stop and wipe settings/history (danger)
 ```
+
+**With plain Docker (without compose):**
+
+```bash
+docker build -t adtestpro .
+
+docker run -d --name adtestpro \
+  -p 8000:8000 \
+  -v adtestpro-data:/data \
+  -e ADTESTPRO_DATA_DIR=/data \
+  --restart unless-stopped \
+  adtestpro
+
+# optional .env overrides (rare — provider keys are usually set in the UI):
+# docker run -d --name adtestpro -p 8000:8000 -v adtestpro-data:/data \
+#   -e ADTESTPRO_DATA_DIR=/data --env-file .env adtestpro
+
+# after a code change
+docker build -t adtestpro . && docker rm -f adtestpro && \
+docker run -d --name adtestpro -p 8000:8000 -v adtestpro-data:/data \
+  -e ADTESTPRO_DATA_DIR=/data adtestpro
+```
+
+Docker persists settings, remembered inputs, and run history in the `adtestpro-data`
+named volume (mounted at `/data`), so rebuilds don't reset your configuration. The
+evaluation form remembers your brief, panel size, and question choices between runs
+(the uploaded image is never saved); use **Clear saved inputs** to forget them.
 
 **Model config** — set in the **Settings** tab's **Models** section, or via env (UI
 values override env):
@@ -122,6 +165,7 @@ ADTESTPRO_MODELS=openai/gpt-4o-mini,anthropic/claude-sonnet-5,deepseek/deepseek-
 | `ADTESTPRO_PIPELINE_TIMEOUT_S` | no | `300` | Whole-run wall-clock budget |
 | `ALLOWED_ORIGINS` | no | `http://localhost:8000,…` | CORS allowlist |
 | `ADTESTPRO_LOG_LEVEL` | no | `INFO` | Terminal log level |
+| `ADTESTPRO_DATA_DIR` | no | repo root | Where `settings.local.json`, `preferences.json`, and `adtestpro.db` live. Docker sets `/data`, a named volume, so settings and history survive rebuilds |
 | `ADTESTPRO_DISABLE_KEYRING` | no | — | Set to `1` to skip the OS keychain entirely (headless/CI/locked keychains); secrets stay in the 0600 settings file |
 | `ADTESTPRO_REVISION` | no | — | Code revision stamped in receipts when git is unavailable (containers) |
 
@@ -192,8 +236,10 @@ Every terminal run is then recorded to local SQLite for history.
 schema repair carrying the validation error. Slightly malformed extraction output is
 salvaged (a value without evidence is downgraded to `unknown` with a visible warning)
 rather than failing the whole run, and a failed image model is retried once on the
-primary model. Keychain access is bounded so a locked or headless keychain never blocks
-startup — set `ADTESTPRO_DISABLE_KEYRING=1` to skip it entirely.
+primary model. Persona generation regenerates only for hard constraint failures — a
+missing specificity basis is a warning, and coverage fields are stamped from the slots.
+Keychain access is bounded so a locked or headless keychain never blocks startup — set
+`ADTESTPRO_DISABLE_KEYRING=1` to skip it entirely.
 
 ## Settings & run history
 
@@ -218,7 +264,7 @@ startup — set `ADTESTPRO_DISABLE_KEYRING=1` to skip it entirely.
   thresholds, and what's blocked on human data
 - `benchmarks/evaluate.py` — metrics + deterministic replay (`replay-cached`, `replay-fresh`)
   + the generic-vs-specific persona ablation (`specificity --brief … --image …`)
-- 179 offline tests (`pytest tests/`) run the full pipeline on fixtures with zero network
+- 189 offline tests (`pytest tests/`) run the full pipeline on fixtures with zero network
 
 ## Research grounding
 
@@ -232,7 +278,10 @@ distributions, while ungrounded detail risks amplifying stereotypes (Argyle et a
 2022/23). So specificity is a **differentiation mechanism grounded in the brief**, not a
 claim of representativeness — the panel stays a coverage panel, and the generic-vs-specific
 ablation (`benchmarks/evaluate.py specificity`) measures whether it actually increases
-response dispersion and attribute utilization.
+response dispersion and attribute utilization. Specificity checks are **advisory
+warnings** (they never reject a run), and pain/interest coverage is **stamped
+server-side from the coverage slots**, so paraphrase or typos in the brief cannot
+invalidate an otherwise good panel.
 
 <details>
 <summary><strong>Academic (most-cited first)</strong></summary>

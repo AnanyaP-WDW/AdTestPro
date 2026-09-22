@@ -6,6 +6,7 @@ disagree: both templates include the same partial and read the same dict.
 
 from __future__ import annotations
 
+import os
 from collections import Counter
 from typing import Optional
 
@@ -180,6 +181,10 @@ def build_report_view(result, question_ids: Optional[list[str]] = None) -> dict:
                     f"vendor(s) [{vendor_txt}]")
         if len(vendors) == 1:
             mix_note += " — single-family pool, family bias not hedged"
+    # Configured scoring pool: shown when a run ended before the respond stage, so
+    # it's clear the pool exists and rotation applies at scoring.
+    configured_pool = [m.strip() for m in os.getenv("ADTESTPRO_MODELS", "").split(",")
+                       if m.strip()]
 
     obs_ids = {o.id for o in result.extraction.observations} if result.extraction else set()
     response_map = {r.persona_id: r.answers for r in result.responses}
@@ -207,6 +212,8 @@ def build_report_view(result, question_ids: Optional[list[str]] = None) -> dict:
         "scoring_models": scoring_models,
         "extraction_models": extraction_models,
         "mix_note": mix_note,
+        "configured_pool": configured_pool,
+        "show_configured_pool": (not scoring_models) and bool(configured_pool),
         # -- visual report --
         "dims": dims,
         "has_ratings": bool(rated),

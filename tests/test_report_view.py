@@ -57,6 +57,16 @@ def test_view_handles_no_personas_and_no_ratings():
     assert v["show_model_mix"] is False
 
 
+def test_configured_pool_shown_before_scoring(monkeypatch):
+    monkeypatch.setenv("ADTESTPRO_MODELS", "openai/gpt-4o-mini, z-ai/glm-5.3-flash")
+    result = EvaluationResult(
+        evaluation_id="eval-fail", status="extraction_invalid",
+        scores=ScoreSummary(), trace=EvaluationTrace(evaluation_id="eval-fail", model="m"))
+    v = build_report_view(result, ["clarity"])
+    assert v["configured_pool"] == ["openai/gpt-4o-mini", "z-ai/glm-5.3-flash"]
+    assert v["show_configured_pool"] is True  # no respond calls yet
+
+
 def test_view_computes_confidence_and_strategies():
     observation = AdObservation(id="o1", field="headline_text", value="Buy now",
                                 evidence_quote="Buy now", confidence=80)

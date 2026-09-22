@@ -467,6 +467,7 @@
             <div class="disclosure__body small muted">
                 <p>Model {{ result.trace.model }} · pipeline {{ result.trace.pipeline_version }} · revision {{ result.trace.code_revision }} · {{ trace_stats.calls }} provider calls</p>
                 {% if mix_note %}<p style="margin-top:4px;">{{ mix_note }}{% if extraction_models %} · extraction: {{ extraction_models[0] }}{% endif %}</p>{% endif %}
+                {% if show_configured_pool %}<p style="margin-top:4px;">Configured scoring pool: {{ configured_pool|join(', ') }} — rotation applies at the respond (scoring) stage.</p>{% endif %}
                 {% if show_model_mix %}
                 <div class="mini-chart" style="margin-top:8px;">
                     <p class="mini-chart__title">Scoring model mix</p>
