@@ -25,6 +25,11 @@
   ⭐ If this tool helped you, please <a href="https://github.com/AnanyaP-WDW/AdTestPro/stargazers">leave a star</a> to help others find it!
 </p>
 
+<p align="center">
+  📄 <strong>See a real example:</strong>
+  <a href="examples/instantly-automated-outreach.pdf">Instantly — automated outreach (PDF report, 25-persona panel)</a>
+</p>
+
 > **Honest label.** AdTestPro produces schema-valid, evidence-linked ad evaluations.
 > It is an experimental creative-screening signal — not a replacement for human
 > research — and it makes no CTR, sales, or causal-lift claims.
@@ -35,6 +40,11 @@
 [Features](#features) · [Quickstart](#quickstart) · [Configuration](#configuration) · [API](#api) · [How it works](#how-it-works) · [Benchmarks](#docs--rigor) · [Research](#research-grounding) · [Roadmap](#roadmap) · [License](#license)
 
 ## See it in action
+
+Want the full output before running anything? Open a real report:
+**[Instantly — automated outreach (PDF, 25-persona panel)](examples/instantly-automated-outreach.pdf)** —
+run context, visual summary charts, dimension scores, audience themes, structured
+extraction, coverage panel, and methodology.
 
 | Guided brief | Audience definition |
 |---|---|
