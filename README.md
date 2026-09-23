@@ -26,8 +26,10 @@
 </p>
 
 <p align="center">
-  📄 <strong>See a real example:</strong>
-  <a href="examples/instantly-automated-outreach.pdf">Instantly — automated outreach (PDF report, 25-persona panel)</a>
+  📄 <strong>See real examples:</strong>
+  <a href="examples/instantly-automated-outreach.pdf">Instantly — automated outreach</a> ·
+  <a href="examples/ai-remodelling-estimates.pdf">AI remodelling estimates</a>
+  <br>(25-persona panels, full PDF reports)
 </p>
 
 > **Honest label.** AdTestPro produces schema-valid, evidence-linked ad evaluations.
@@ -42,7 +44,8 @@
 ## See it in action
 
 Want the full output before running anything? Open a real report:
-**[Instantly — automated outreach (PDF, 25-persona panel)](examples/instantly-automated-outreach.pdf)** —
+**[Instantly — automated outreach (PDF, 25-persona panel)](examples/instantly-automated-outreach.pdf)** or
+**[AI remodelling estimates (PDF, 25-persona panel)](examples/ai-remodelling-estimates.pdf)** —
 run context, visual summary charts, dimension scores, audience themes, structured
 extraction, coverage panel, and methodology.
 
