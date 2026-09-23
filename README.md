@@ -8,6 +8,11 @@
 <h1 align="center">AdTestPro</h1>
 
 <p align="center">
+  Build faster feedback loops for ad user research.
+  Test ads, banners, and creatives against synthetic audiences before committing to expensive human panels.
+</p>
+
+<p align="center">
   <a href="https://github.com/AnanyaP-WDW/AdTestPro/actions/workflows/ci.yml"><img src="https://github.com/AnanyaP-WDW/AdTestPro/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/AnanyaP-WDW/AdTestPro/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-GPLv3%20%7C%20commercial-blue" alt="License: GPLv3 or commercial"></a>
   <img src="https://img.shields.io/badge/python-3.11-blue" alt="Python 3.11">
@@ -16,9 +21,8 @@
 </p>
 
 <p align="center">
-  <strong>Upload an ad. Get a coverage panel of up to 25 AI respondents (default 12),
-  structured extraction, dimension scores with disagreement flags, and
-  evidence-linked recommendations — in one to three minutes, for cents per run.</strong>
+  <strong>Test any creative against a synthetic audience in minutes, not weeks —
+  for cents, not thousands.</strong>
 </p>
 
 <p align="center">
@@ -61,15 +65,19 @@ extraction, coverage panel, and methodology.
 
 ## Why it exists
 
-Human panels are slow and expensive; gut-feel creative review is fast but uncalibrated.
-AdTestPro sits between: a **bounded, auditable pipeline** where LLMs produce
-evidence-grounded judgments and **Python computes every number**. The model never
-writes a final score.
+Human research is the gold standard but takes weeks and costs thousands.
+Gut-feel review is instant but uncalibrated. AdTestPro sits between:
+**flash-poll-speed feedback loops** that let you test a creative concept,
+get structured scores from 1–25 AI personas, iterate, and repeat — before
+committing to expensive human validation. Run the same brief against
+different creatives to compare signals, or change one variable at a time
+to isolate what moves the needle.
 
 ## Features
 
 | Capability | What you get |
 |---|---|
+| **Flash-poll workflow** | Upload → define audience → score → iterate. A full cycle takes 1–3 minutes. Change one variable at a time to isolate what moves the needle, or run the same brief against different creatives to compare signals. Structured A/B comparison is planned on the [roadmap](#roadmap). |
 | **Coverage panel, not fake people** | Up to 25 personas (default 12) spanning your pain points, interests, familiarity, price sensitivity, and skeptical→receptive stance — plus **decision-relevant specificity**: each persona gets a concrete situation, job-to-be-done, current alternative, objections, proof needs, and switching cost. Every fact traces to your brief (`supplied`) vs. inference (`hypothesis + basis`). No names, no backstories, no sensitive attributes. |
 | **Observation vs. interpretation split** | Visible text (exact), brand, claims, CTA with evidence quotes and image regions — kept separate from tone/symbolism/persuasion reads. Missing logo, price, or CTA stays `unknown`, never invented. |
 | **Stable 1–5 rubrics** | Attention, clarity, relevance, credibility, action intent — each with behavioral anchors. Disagreement widens the range instead of averaging it away; minority views survive synthesis by construction. |
@@ -327,8 +335,9 @@ invalidate an otherwise good panel.
 | Coverage panel, extraction, rubric scoring, synthesis, critic | **Shipped** |
 | User-defined panel size (1–25) | **Shipped** |
 | Multi-model debias hedge | **Shipped** |
-| Saved runs / history / shareable report URLs | Not started — requires persistence layer |
-| Side-by-side creative comparison | Planned after persistence |
+| Saved runs / history / shareable report URLs | **Shipped** |
+| Side-by-side A/B creative comparison | Planned — run the same brief against two creatives, compare scores, distributions, and evidence in a single view |
+| Flash-poll API endpoint | Planned — `POST /api/flash` returns scores without the UI, for integration into CI/CD or ad-builder pipelines |
 | Human-panel calibration for benchmark gates | **Blocked on human data** |
 
 ## Security notes
