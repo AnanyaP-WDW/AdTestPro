@@ -10,7 +10,7 @@ def test_prefs_round_trip_and_mode(tmp_path):
         8, ["clarity"])
     prefs.save_prefs(data, path)
     assert prefs.load_prefs(path) == data
-    assert (path.stat().st_mode & 0o777) == 0o644  # non-secret file
+    assert (path.stat().st_mode & 0o777) == 0o600  # private to this user
     prefs.clear_prefs(path)
     assert prefs.load_prefs(path) == {}
 

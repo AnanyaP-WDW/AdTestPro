@@ -19,6 +19,8 @@ from app.core import settings as settings_mod
 
 @pytest.fixture(autouse=True)
 def _isolate_local_state(tmp_path, monkeypatch):
+    # A token exported in the developer shell must not 401 the offline suite.
+    monkeypatch.delenv("ADTESTPRO_AUTH_TOKEN", raising=False)
     monkeypatch.setattr(runs_mod, "default_path", lambda: tmp_path / "test.db")
     monkeypatch.setattr(runs_mod, "_legacy_path", lambda: tmp_path / "no-legacy.db")
     monkeypatch.setattr(prefs_mod, "default_path", lambda: tmp_path / "preferences.json")
