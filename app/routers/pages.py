@@ -32,6 +32,7 @@ from app.core.settings import (
     ApiKey,
     ProviderSettings,
     apply_settings,
+    base_url_error,
     mismatch_warnings,
     new_key_id,
     probe_connection,
@@ -354,6 +355,9 @@ def _handle_key_action(request: Request, tpl, cur: ProviderSettings, action: str
             errs["key_label"] = "That label is already used."
         if not value:
             errs["key_value"] = "API key is required."
+        url_problem = base_url_error(base)
+        if url_problem:
+            errs["key_base_url"] = url_problem
         if errs:
             return tpl.TemplateResponse(request, "settings.html",
                                         _settings_ctx(request, submit_error="Fix the highlighted fields.",
@@ -378,6 +382,9 @@ def _handle_key_action(request: Request, tpl, cur: ProviderSettings, action: str
             errs["edit_label"] = "Label is required."
         elif any(k.label.strip() == label for k in cur.keys if k.id != key_id):
             errs["edit_label"] = "That label is already used."
+        url_problem = base_url_error(edit_base_url)
+        if url_problem:
+            errs["edit_base_url"] = url_problem
         if errs:
             return tpl.TemplateResponse(request, "settings.html",
                                         _settings_ctx(request, submit_error="Fix the highlighted fields.",
@@ -531,7 +538,7 @@ async def run_report_pdf(request: Request, evaluation_id: str):
     ctx["app_css"] = _app_css()
     ctx["logo_uri"] = _asset_data_uri("logo.svg")
     html = tpl.env.get_template("report_pdf.html").render(**ctx)
-    pdf = render_pdf(html, base_url=str(request.base_url))
+    pdf = render_pdf(html)  # no base URL: assets are inlined, Host cannot steer fetches
     return Response(
         content=pdf, media_type="application/pdf",
         headers={"Content-Disposition": f'inline; filename="adtestpro-{evaluation_id}.pdf"'})

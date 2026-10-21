@@ -10,7 +10,9 @@ services:
       # Named volume: settings, preferences, and run history survive rebuilds.
       - adtestpro-data:/data
     ports:
-      - "8000:8000"
+      # Loopback only: the app has no auth unless ADTESTPRO_AUTH_TOKEN is set.
+      # For LAN access set the token first, then bind "8000:8000".
+      - "127.0.0.1:8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
       - ADTESTPRO_DATA_DIR=/data
