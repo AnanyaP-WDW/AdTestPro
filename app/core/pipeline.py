@@ -54,6 +54,7 @@ PROMPT_DIR = Path(__file__).resolve().parent / "prompts"
 PERSONA_COUNT = 12
 MAX_QUESTIONS = 3
 MAX_IMAGE_BYTES = 15 * 1024 * 1024  # matches browser-side check in form.html
+MAX_IMAGE_PIXELS = 40_000_000  # a small compressed file can decode to hundreds of MB
 MIN_VALID_FRACTION = 0.5
 DISAGREE_STDEV = 1.0
 DISAGREE_RANGE = 3
@@ -531,11 +532,15 @@ def verify_image(content: bytes, filename: str, content_type: str) -> tuple[byte
         raise ImageInvalid(f"unsupported media type: {content_type}")
     from PIL import Image, UnidentifiedImageError
 
+    Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS  # also guards the thumbnail decode path
     try:
         img = Image.open(io.BytesIO(content))
+        width, height = img.size
         img.verify()
     except (UnidentifiedImageError, OSError, ValueError) as e:
         raise ImageInvalid(f"malformed image content: {e}") from e
+    if width * height > MAX_IMAGE_PIXELS:
+        raise ImageInvalid(f"image over {MAX_IMAGE_PIXELS // 1_000_000}MP pixel limit")
     # Re-open (verify() closes) to confirm decoded format matches claimed MIME.
     img = Image.open(io.BytesIO(content))
     decoded_mime = Image.MIME.get(img.format, "")

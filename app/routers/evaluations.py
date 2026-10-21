@@ -24,6 +24,8 @@ from app.core import runs as runs_store
 router = APIRouter(prefix="/api", tags=["evaluations"])
 
 # ponytail: in-process dict, not a DB (persistence is out of MVP scope).
+# Capped because keys are client-supplied: unbounded growth is a memory DoS.
+MAX_IDEMPOTENT_RESULTS = 100
 _IDEMPOTENT_RESULTS: dict[str, dict] = {}
 
 
@@ -99,4 +101,6 @@ async def create_evaluation(
     runs_store.record(result)  # API has no thumbnail; history detail notes it
     if digest:
         _IDEMPOTENT_RESULTS[digest] = body
+        while len(_IDEMPOTENT_RESULTS) > MAX_IDEMPOTENT_RESULTS:
+            _IDEMPOTENT_RESULTS.pop(next(iter(_IDEMPOTENT_RESULTS)))
     return JSONResponse(content=body)
