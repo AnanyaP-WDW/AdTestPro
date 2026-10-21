@@ -14,6 +14,7 @@ active stored key into it so the shared client keeps a single lookup path.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import secrets
 from dataclasses import dataclass, field
@@ -21,6 +22,9 @@ from dataclasses import dataclass, field
 from app.core.paths import REPO_ROOT, data_dir
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlsplit
+
+logger = logging.getLogger("adtestpro.settings")
 
 SETTINGS_FILENAME = "settings.local.json"  # gitignored; never commit
 
@@ -45,6 +49,19 @@ def resolve_base_url(raw: Optional[str]) -> str:
     Blank means the default provider (OpenRouter); trailing slashes are trimmed.
     """
     return (raw or "").strip().rstrip("/") or DEFAULT_BASE_URL
+
+
+def base_url_error(raw: Optional[str]) -> Optional[str]:
+    """Reject non-HTTP endpoints (file:/javascript:/ftp:) at the settings boundary."""
+    value = (raw or "").strip()
+    if not value:
+        return None
+    parsed = urlsplit(value)
+    if parsed.scheme.lower() not in ("http", "https"):
+        return "Base URL must start with http:// or https://"
+    if not parsed.netloc:
+        return "Base URL needs a host (e.g. https://openrouter.ai/api/v1)"
+    return None
 
 
 def new_key_id() -> str:
@@ -261,6 +278,11 @@ class ProviderSettings:
             errs["keys"] = "Key labels must be unique."
         if any(not k.key.strip() for k in self.keys):
             errs["keys"] = "Key value cannot be empty."
+        for k in self.keys:
+            problem = base_url_error(k.base_url)
+            if problem:
+                errs["keys"] = f"{k.label or k.id}: {problem}"
+                break
         return errs
 
     # -- file persistence (gitignored) --
@@ -353,9 +375,17 @@ def load_settings(path: Optional[Path] = None) -> ProviderSettings:
 def save_settings(settings: ProviderSettings, path: Optional[Path] = None) -> Path:
     path = path or default_path()
     _prune_keyring_secrets(settings, path)
+    data = settings.to_file_dict()
+    if settings.keyring_enabled and any(
+            e.get("secret_source") == "file" and e.get("key") for e in data["keys"]):
+        logger.warning("keychain write failed: key(s) kept in plaintext %s", path.name)
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as f:
-        json.dump(settings.to_file_dict(), f, indent=2)
+        json.dump(data, f, indent=2)
+    try:
+        os.chmod(path, 0o600)  # an existing file keeps its old mode without this
+    except OSError:
+        pass
     return path
 
 

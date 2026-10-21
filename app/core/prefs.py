@@ -1,6 +1,6 @@
 """Remembered evaluation-form inputs (non-secret UI preferences).
 
-Stored as JSON in the data dir (mode 0644) so the brief, panel size, and selected
+Stored as JSON in the data dir (mode 0600) so the brief, panel size, and selected
 questions are prefilled next time. The uploaded image is NEVER persisted.
 """
 
@@ -43,7 +43,7 @@ def save_prefs(prefs: dict, path: Optional[Path] = None) -> Path:
     tmp.write_text(json.dumps(prefs, indent=2), encoding="utf-8")
     os.replace(tmp, path)
     try:
-        os.chmod(path, 0o644)  # no secrets live here
+        os.chmod(path, 0o600)  # no keys, but the brief is still private
     except OSError:
         pass
     return path

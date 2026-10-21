@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -94,6 +95,10 @@ def connect(path: Optional[Path] = None) -> sqlite3.Connection:
                 path = legacy  # migrate on next write
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
+    try:
+        os.chmod(path, 0o600)  # briefs and personas are private to this user
+    except OSError:
+        pass
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.executescript(_SCHEMA)
