@@ -155,7 +155,7 @@ def test_bad_image_rejected_before_llm_with_recovery_copy():
     c = TestClient(app)
     r = c.post("/evaluate", data=FORM, files=_files(png=b"junk-bytes", name="evil.png"))
     assert r.status_code == 422
-    assert "image could not be used" in r.text.lower()
+    assert "creative could not be used" in r.text.lower()
     assert fake.n_calls == 0
     app.state.llm_client = None
 

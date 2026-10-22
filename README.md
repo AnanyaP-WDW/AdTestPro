@@ -333,6 +333,8 @@ invalidate an otherwise good panel.
 | Capability | Status |
 |---|---|
 | Coverage panel, extraction, rubric scoring, synthesis, critic | **Shipped** |
+| Static creative kinds: image ad, display banner (slot-scale), design comp | **Shipped** |
+| GIF / short video (sampled frames, visual-only) | Planned |
 | User-defined panel size (1–25) | **Shipped** |
 | Multi-model debias hedge | **Shipped** |
 | Saved runs / history / shareable report URLs | **Shipped** |

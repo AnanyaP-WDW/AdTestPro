@@ -18,6 +18,7 @@ from app.core.pipeline import (
     QUESTION_IDS,
     QUESTIONS,
     BriefInvalid,
+    normalize_kind,
     run_pipeline,
     select_questions,
     verify_image,
@@ -49,6 +50,7 @@ from app.report.view import (
 router = APIRouter(tags=["pages"])
 
 THUMB_MAX_PX = 320  # bounded report thumbnail; originals are never stored
+LARGE_THUMB_MAX_PX = 1000  # banners/design comps must stay legible at native scale
 
 
 def _templates(request: Request):
@@ -82,13 +84,13 @@ def _asset_data_uri(filename: str) -> str:
         return ""
 
 
-def _thumbnail_uri(content: bytes, mime: str) -> Optional[str]:
+def _thumbnail_uri(content: bytes, mime: str, max_px: int = THUMB_MAX_PX) -> Optional[str]:
     """Bounded in-memory thumbnail as a data URI. Never exposes files or paths."""
     try:
         from PIL import Image
 
         img = Image.open(io.BytesIO(content))
-        img.thumbnail((THUMB_MAX_PX, THUMB_MAX_PX))
+        img.thumbnail((max_px, max_px))
         buf = io.BytesIO()
         img.convert("RGB").save(buf, format="JPEG", quality=70)
         return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
@@ -128,6 +130,7 @@ async def form_page(request: Request):
         "q_texts": {q.id: q.text for q in QUESTIONS.values()},
         "persona_count_default": prefs_store.persona_count(prefs, PERSONA_COUNT),
         "persona_count_max": MAX_PERSONAS,
+        "creative_kind": prefs_store.creative_kind(prefs),
     })
 
 
@@ -139,7 +142,7 @@ async def clear_preferences():
 
 
 def _render_form_error(request: Request, status: int, title: str, errors: dict[str, str],
-                       form_values: dict, qids: list[str]):
+                       form_values: dict, qids: list[str], creative_kind: str = "image"):
     ready, missing = _readiness(request)
     return _templates(request).TemplateResponse(request, "form.html", {
         "ready": ready, "ready_missing": missing, "nav": "evaluate",
@@ -148,6 +151,7 @@ def _render_form_error(request: Request, status: int, title: str, errors: dict[s
         "question_ids_list": QUESTION_IDS,
         "q_texts": {q.id: q.text for q in QUESTIONS.values()},
         "persona_count_default": PERSONA_COUNT, "persona_count_max": MAX_PERSONAS,
+        "creative_kind": creative_kind,
     }, status_code=status)
 
 
@@ -177,6 +181,7 @@ async def evaluate_page(
     price_sensitivity: Optional[str] = Form(None),
     brand_familiarity: Optional[str] = Form(None),
     persona_count: int = Form(PERSONA_COUNT),
+    creative_kind: str = Form("image"),
     image: UploadFile = File(...),
 ):
     tpl = _templates(request)
@@ -194,10 +199,15 @@ async def evaluate_page(
         "price_sensitivity": price_sensitivity or None,
         "brand_familiarity": brand_familiarity or None,
     }
-    keep = dict(brief_data, persona_count=persona_count)
+    keep = dict(brief_data, persona_count=persona_count, creative_kind=creative_kind)
 
     # Boundary validation before any LLM call; values preserved on failure.
     errors = _field_errors(brief_data)
+    try:
+        kind = normalize_kind(creative_kind)
+    except ValueError:
+        kind = "image"
+        errors["creative_kind"] = "Pick a supported creative type."
     if not (1 <= persona_count <= MAX_PERSONAS):
         errors["persona_count"] = f"Panel size must be between 1 and {MAX_PERSONAS}."
     if not qids:
@@ -209,11 +219,11 @@ async def evaluate_page(
             errors["question_ids"] = str(e)
     if errors:
         return _render_form_error(request, 422, "Fix the highlighted fields and resubmit.",
-                                  errors, keep, qids)
+                                  errors, keep, qids, kind)
 
     # Remember the valid inputs for next time (never the image).
     try:
-        prefs_store.save_prefs(prefs_store.snapshot(brief_data, persona_count, qids))
+        prefs_store.save_prefs(prefs_store.snapshot(keep, persona_count, qids))
     except OSError:
         pass  # a read-only data dir must never break a run
 
@@ -222,8 +232,8 @@ async def evaluate_page(
         content, mime, checksum = verify_image(content, image.filename or "upload",
                                                image.content_type or "application/octet-stream")
     except Exception as e:
-        return _render_form_error(request, 422, "The image could not be used.",
-                                  {"image": str(e)}, keep, qids)
+        return _render_form_error(request, 422, "The creative could not be used.",
+                                  {"image": str(e)}, keep, qids, kind)
 
     try:
         client = getattr(request.app.state, "llm_client", None)
@@ -231,7 +241,7 @@ async def evaluate_page(
             brief_data=brief_data, image=content,
             filename=image.filename or "upload",
             content_type=mime,
-            question_ids=qids, client=client, persona_count=persona_count,
+            question_ids=qids, client=client, persona_count=persona_count, kind=kind,
         )
     except Exception:
         # ponytail: safe error page, never raw tracebacks outward.
@@ -240,7 +250,8 @@ async def evaluate_page(
                                      "result": None, "ready": _readiness(request)[0],
                                      "nav": "evaluate", "form_values": keep}, status_code=502)
 
-    thumb_uri = _thumbnail_uri(content, mime)
+    thumb_uri = _thumbnail_uri(content, mime,
+                               LARGE_THUMB_MAX_PX if kind in ("banner", "design") else THUMB_MAX_PX)
     recorded = runs_store.record(result, thumb_uri)
     ctx = {
         "error": None, "ready": _readiness(request)[0], "nav": "evaluate",

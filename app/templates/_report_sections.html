@@ -5,7 +5,7 @@
 <div class="alert alert--danger" role="alert">
     <p class="alert__title">Something went wrong</p>
     <p>{{ error }}</p>
-    <p>Your brief text was preserved, but the image is <strong>not kept between attempts</strong> —
+    <p>Your brief text was preserved, but the creative is <strong>not kept between attempts</strong> —
     <a class="link" href="/">start a new run</a> and re-attach it.</p>
 </div>
 {% elif result %}
@@ -35,7 +35,7 @@
         <p class="alert__title">No scores were produced</p>
         <p>This run ended as “{{ status_label }}” before the panel answered, so there are no
         dimension means, rating distributions, or heatmap. The cause is listed in the warnings below.</p>
-        <p>Try the run again. If extraction keeps failing, pick an image model that supports
+        <p>Try the run again. If extraction keeps failing, pick a vision model that supports
         JSON/structured output in <a class="link" href="/settings">Settings</a>.</p>
     </div>
     {% endif %}
@@ -53,15 +53,16 @@
     <section class="card report__section" aria-labelledby="h-context" id="context">
         <div class="card__body">
             <h2 class="card__title" id="h-context">Run context</h2>
-            <div class="ctx-grid" style="margin-top: 12px;">
+            <div class="ctx-grid {% if media_kind in ('banner', 'design') %}ctx-grid--wide{% endif %}" style="margin-top: 12px;">
                 {% if thumb_uri %}
-                <img class="ctx-thumb" src="{{ thumb_uri }}" alt="Thumbnail of the evaluated ad creative">
+                <img class="ctx-thumb" src="{{ thumb_uri }}" alt="{{ media_label }} preview">
                 {% else %}
                 <div class="ctx-thumb" style="display:flex;align-items:center;justify-content:center;">
-                    <span class="muted small">No image retained for this run</span>
+                    <span class="muted small">No creative preview retained for this run</span>
                 </div>
                 {% endif %}
                 <dl class="ctx-kv">
+                    <dt>Creative type</dt><dd>{{ media_label }}{% if media_dims %} · {{ media_dims }}{% endif %}</dd>
                     <dt>Campaign objective</dt><dd>{{ result.brief.campaign_objective if result.brief else '—' }}</dd>
                     <dt>Product / service</dt><dd>{{ result.brief.product_description if result.brief else '—' }}</dd>
                     {% if result.brief %}
@@ -368,7 +369,7 @@
     </section>
     {% else %}
     <section class="report__section">
-        <p class="muted card card__body">No extraction — the run ended before image analysis.</p>
+        <p class="muted card card__body">No extraction — the run ended before creative analysis.</p>
     </section>
     {% endif %}
 

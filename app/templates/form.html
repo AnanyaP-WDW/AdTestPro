@@ -45,13 +45,25 @@
                         <span class="form-section__step" aria-hidden="true">Step 1</span>
                         <h2 class="form-section__title" id="h-creative">Creative</h2>
                     </div>
-                    <p class="form-section__desc">The image is analyzed once and shown in the report. It is never stored between runs.</p>
+                    <p class="form-section__desc">The creative is analyzed once and shown in the report. It is never stored between runs.</p>
 
                     <div class="field">
-                        <label class="field__label" for="image">Ad image <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
+                        <label class="field__label" for="creative_kind">Creative type</label>
+                        <select class="select" id="creative_kind" name="creative_kind"
+                                {% if field_errors.get('creative_kind') %}aria-invalid="true" aria-describedby="err-creative_kind"{% endif %}>
+                            {% for value, label in [('image', 'Image ad'), ('banner', 'Banner'), ('design', 'Design comp')] %}
+                            <option value="{{ value }}" {% if (creative_kind or 'image') == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <p class="field__help">Banners are judged at slot scale; design comps are reviewed as static layouts.</p>
+                        {% if field_errors.get('creative_kind') %}<p class="field__error" id="err-creative_kind">{{ field_errors['creative_kind'] }}</p>{% endif %}
+                    </div>
+
+                    <div class="field">
+                        <label class="field__label" for="image">Creative file <span class="field__req" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
                         <input class="input" id="image" name="image" type="file" required
                                accept="image/png, image/jpeg" aria-describedby="file-info image-help">
-                        <p class="field__help" id="image-help">PNG or JPEG, up to 15MB.</p>
+                        <p class="field__help" id="image-help">PNG or JPEG, up to 15MB. Video and GIF support is coming next.</p>
                         <p class="field__error" id="file-info" role="status" hidden></p>
                         {% if field_errors.get('image') %}<p class="field__error">{{ field_errors['image'] }}</p>{% endif %}
                         <figure class="preview" id="image-preview">
@@ -227,7 +239,7 @@
 <form method="post" action="/preferences/clear" class="saved-inputs">
     <p class="small muted">
         Your brief, panel size, and question choices are remembered for next time
-        (the image is never saved).
+        (the creative is never saved).
         <button type="submit" class="link">Clear saved inputs</button>
     </p>
 </form>

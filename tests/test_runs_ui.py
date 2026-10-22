@@ -91,7 +91,7 @@ def test_api_run_saved_but_replay_is_not():
         # API runs have no thumbnail; detail still renders with the fallback
         eid = runs_mod.list_runs()[0]["evaluation_id"]
         d = c.get(f"/runs/{eid}")
-        assert d.status_code == 200 and "No image retained" in d.text
+        assert d.status_code == 200 and "No creative preview retained" in d.text
     finally:
         app.state.llm_client = None
 
