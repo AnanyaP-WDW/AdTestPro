@@ -15,6 +15,7 @@ from app.core.pipeline import (
     MAX_IMAGE_BYTES,
     MAX_PERSONAS,
     PERSONA_COUNT,
+    normalize_kind,
     run_pipeline,
     select_questions,
 )
@@ -51,15 +52,20 @@ async def create_evaluation(
     brand_familiarity: Optional[str] = Form(None),
     question_ids: str = Form("attention,clarity,relevance"),
     persona_count: int = Form(PERSONA_COUNT),
+    creative_kind: str = Form("image"),
     idempotency_key: Optional[str] = Form(None),
     image: UploadFile = File(...),
     x_idempotency_key: Optional[str] = Header(None),
 ):
     key_seed = x_idempotency_key or idempotency_key
+    try:
+        kind = normalize_kind(creative_kind)  # cheap check before buffering up to 15MB
+    except ImageInvalid as e:
+        return JSONResponse(status_code=422, content={"detail": f"invalid request: {e}"})
     content = await image.read(MAX_IMAGE_BYTES + 2)
     fields_sig = "|".join([product_description, campaign_objective, str(age_min), str(age_max),
                             location, interests, pain_points, category_familiarity,
-                            question_ids or "", str(persona_count)])
+                            question_ids or "", str(persona_count), kind])
     digest = _key(key_seed, content, fields_sig)
     if digest and digest in _IDEMPOTENT_RESULTS:
         return JSONResponse(content=_IDEMPOTENT_RESULTS[digest],
@@ -92,7 +98,7 @@ async def create_evaluation(
             brief_data=brief_data, image=content,
             filename=image.filename or "upload",
             content_type=image.content_type or "application/octet-stream",
-            question_ids=qids, client=client, persona_count=persona_count,
+            question_ids=qids, client=client, persona_count=persona_count, kind=kind,
         )
     except LLMError:
         # ponytail: safe mapping, no keys/prompts/stack traces outward.

@@ -466,9 +466,12 @@ legend { padding: 0; }
 .ctx-grid { display: grid; gap: 16px; }
 @media (min-width: 640px) { .ctx-grid { grid-template-columns: 200px 1fr; } }
 .ctx-thumb {
-  width: 100%; aspect-ratio: 1; object-fit: contain;
+  width: 100%; height: auto; max-height: 320px; object-fit: contain;
   background: var(--canvas); border: 1px solid var(--border); border-radius: var(--radius-sm);
 }
+/* Banner/design previews need the full card width to stay legible. */
+.ctx-grid--wide { grid-template-columns: 1fr; }
+.ctx-grid--wide .ctx-thumb { max-height: 420px; }
 .ctx-kv { display: grid; grid-template-columns: 130px 1fr; gap: 4px 12px; font-size: 13px; }
 .ctx-kv dt { color: var(--ink-3); }
 .ctx-kv dd { margin: 0; color: var(--ink); }

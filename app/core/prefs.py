@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
+from app.core.media import KINDS
 from app.core.paths import data_dir
 
 PREFERENCES_FILENAME = "preferences.json"
@@ -62,6 +63,8 @@ def snapshot(form: dict, persona_count: int, question_ids: list[str]) -> dict:
     data = {k: str(form.get(k, "") or "") for k in BRIEF_FIELDS}
     data["persona_count"] = int(persona_count)
     data["question_ids"] = [q for q in question_ids if q]
+    kind = str(form.get("creative_kind", "image"))
+    data["creative_kind"] = kind if kind in KINDS else "image"
     return data
 
 
@@ -76,6 +79,12 @@ def persona_count(prefs: dict, default: int) -> int:
         return n if 1 <= n <= 100 else default
     except (TypeError, ValueError):
         return default
+
+
+def creative_kind(prefs: dict) -> str:
+    """Remembered creative type; unknown/missing values fall back to a plain image."""
+    kind = str(prefs.get("creative_kind", "image"))
+    return kind if kind in KINDS else "image"
 
 
 def question_ids(prefs: dict) -> list[str]:

@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import base64
 import hashlib
-import io
 import itertools
 import logging
 import math
@@ -26,6 +25,15 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.core import llm
 from app.core.llm import LLMError, untrusted_block
+from app.core.media import (
+    MAX_IMAGE_BYTES,
+    MAX_IMAGE_PIXELS,
+    ImageInvalid,
+    banner_size_warning,
+    normalize_kind,
+    verify_creative,
+    verify_image,
+)
 from app.core.settings import DEFAULT_MODEL
 from app.core.models import (
     MAX_PERSONAS,
@@ -53,12 +61,27 @@ PROMPT_DIR = Path(__file__).resolve().parent / "prompts"
 
 PERSONA_COUNT = 12
 MAX_QUESTIONS = 3
-MAX_IMAGE_BYTES = 15 * 1024 * 1024  # matches browser-side check in form.html
-MAX_IMAGE_PIXELS = 40_000_000  # a small compressed file can decode to hundreds of MB
 MIN_VALID_FRACTION = 0.5
 DISAGREE_STDEV = 1.0
 DISAGREE_RANGE = 3
-SUPPORTED_MIMES = {"image/jpeg", "image/png"}
+
+# One extraction prompt per static kind; the JSON contract is identical.
+EXTRACT_PROMPTS = {"image": "extract_ad", "banner": "extract_banner",
+                   "design": "extract_design"}
+# Only non-image kinds add context: image prompts stay byte-identical to v0.1
+# so existing benchmark numbers remain comparable.
+VIEWING_CONTEXT = {
+    "banner": "Viewing context: sees this banner in a small display slot while scanning a page; "
+              "text and logo may be tiny, and the slot's surroundings compete for attention.",
+    "design": "Viewing context: reviews this static design comp on a desktop at a considered "
+              "pace; interaction states and responsiveness are not shown.",
+}
+KIND_UNCERTAINTY = {
+    "banner": "banner screened at slot scale; surrounding page context, network rendering, "
+              "and animation are not modelled",
+    "design": "static design comp only; interaction states, responsiveness, and the "
+              "accessibility tree are not evaluated",
+}
 
 # Deterministic states (S5). Allowed transitions guard the loop.
 TRANSITIONS: dict[Optional[str], set[str]] = {
@@ -76,10 +99,6 @@ TERMINAL_FOR_STATE = "COMPLETE"  # trace-level; result carries the TerminalStatu
 
 
 class BriefInvalid(ValueError):
-    pass
-
-
-class ImageInvalid(ValueError):
     pass
 
 
@@ -522,33 +541,8 @@ async def _llm_consistency_check(
     return verdict.issues or ["semantic contradiction (unspecified)"]
 
 
-# ---------------------------------------------------------------- E1: image boundary
-
-def verify_image(content: bytes, filename: str, content_type: str) -> tuple[bytes, str, str]:
-    """Validate BEFORE any LLM call. Returns (content, verified_mime, sha256)."""
-    if len(content) > MAX_IMAGE_BYTES:
-        raise ImageInvalid(f"image over {MAX_IMAGE_BYTES // (1024 * 1024)}MB limit")
-    if content_type not in SUPPORTED_MIMES:
-        raise ImageInvalid(f"unsupported media type: {content_type}")
-    from PIL import Image, UnidentifiedImageError
-
-    Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS  # also guards the thumbnail decode path
-    try:
-        img = Image.open(io.BytesIO(content))
-        width, height = img.size
-        img.verify()
-    except (UnidentifiedImageError, OSError, ValueError) as e:
-        raise ImageInvalid(f"malformed image content: {e}") from e
-    if width * height > MAX_IMAGE_PIXELS:
-        raise ImageInvalid(f"image over {MAX_IMAGE_PIXELS // 1_000_000}MP pixel limit")
-    # Re-open (verify() closes) to confirm decoded format matches claimed MIME.
-    img = Image.open(io.BytesIO(content))
-    decoded_mime = Image.MIME.get(img.format, "")
-    if decoded_mime != content_type:
-        raise ImageInvalid(f"MIME mismatch: claimed {content_type}, decoded {decoded_mime or 'unknown'}")
-    # ponytail: filename never touches the filesystem (in-memory only), safe to ignore beyond this.
-    checksum = "sha256:" + hashlib.sha256(content).hexdigest()
-    return content, decoded_mime, checksum
+# E1 (creative boundary) lives in app/core/media.py; imports above keep the
+# historical `from app.core.pipeline import verify_image` working.
 
 
 # ---------------------------------------------------------------- E3: extraction (one multimodal call)
@@ -624,6 +618,7 @@ async def extract_ad(
     checksum: str,
     client=None,
     trace: Optional[EvaluationTrace] = None,
+    prompt_name: str = "extract_ad",
 ) -> AdExtraction:
     """One image, one primary multimodal call, typed AdExtraction (E3).
 
@@ -636,11 +631,11 @@ async def extract_ad(
 
     async def _call(model: Optional[str]) -> AdExtraction:
         return await llm.complete_structured(
-            model_cls=AdExtraction, system=load_prompt("extract_ad"),
-            user="Extract observable facts from the attached ad image. "
+            model_cls=AdExtraction, system=load_prompt(prompt_name),
+            user="Extract observable facts from the attached creative. "
             "Persuasion strategies are multilabel from the documented taxonomy; "
             "cite visible evidence for each. Use unknown/null when absent.",
-            prompt_version=PROMPT_VERSIONS["extract_ad"], stage="extraction",
+            prompt_version=PROMPT_VERSIONS[prompt_name], stage="extraction",
             trace=trace, client=client, temperature=0.2, max_tokens=3000,
             model=model, image_b64=image_b64, image_mime=mime,
             normalize=lambda d: normalize_extraction_payload(d, notes),
@@ -714,6 +709,7 @@ class PersonaAnswerModel(BaseModel):
 async def _respond_one(
     persona: Persona, extraction: AdExtraction, questions: list[SurveyQuestion],
     client, trace: Optional[EvaluationTrace], model: Optional[str] = None,
+    context: str = "",
 ) -> Optional[PersonaResponse]:
     rubric_text = "\n".join(
         f"- {q.id}: {q.text} " + "; ".join(f"{k}={v}" for k, v in sorted(q.rubric.items()))
@@ -721,6 +717,7 @@ async def _respond_one(
     )
     user = (
         f"You are persona {persona.id} ({persona.segment}).\n"
+        + (f"{context}\n" if context else "")
         + untrusted_block("persona_profile", persona.model_dump_json())
         + untrusted_block("ad_extraction", extraction.model_dump_json())
         + f"\nAnswer each question on its 1..5 rubric (or not_enough_information=true):\n{rubric_text}"
@@ -755,13 +752,15 @@ async def collect_responses(
     questions: list[SurveyQuestion],
     client=None,
     trace: Optional[EvaluationTrace] = None,
+    context: str = "",
 ) -> list[PersonaResponse]:
     # Independent + concurrent; fixed limit enforced inside the llm adapter.
     # Judgment debias hedge: rotate the model pool by persona index (deterministic,
     # arrival-order independent). Non-respond stages stay on the primary model.
     pool = llm.model_pool(client)
     results = await asyncio.gather(*[
-        _respond_one(p, extraction, questions, client, trace, model=pool[i % len(pool)])
+        _respond_one(p, extraction, questions, client, trace,
+                     model=pool[i % len(pool)], context=context)
         for i, p in enumerate(persona_set.personas)
     ])
     return [r for r in results if r is not None]
@@ -886,16 +885,22 @@ async def run_pipeline(
     client=None,
     evaluation_id: Optional[str] = None,
     persona_count: int = PERSONA_COUNT,
+    kind: object = "image",
 ) -> EvaluationResult:
     """Explicit states, one repair per LLM stage, terminal outcomes only (S5)."""
     eid = evaluation_id or f"eval-{uuid.uuid4().hex[:12]}"
     model_name = os.getenv("ADTESTPRO_MODEL", "").strip() or DEFAULT_MODEL
     trace = EvaluationTrace(evaluation_id=eid, model=model_name)
-    trace.prompt_hashes = {k: prompt_hash(f) for k, f in
-                           (("personas", "personas"), ("extract_ad", "extract_ad"),
-                            ("respond", "respond"), ("synthesize", "synthesize"))}
+    try:
+        prompt_kind = normalize_kind(kind)  # prompt choice must match what gets stamped
+    except ValueError:
+        prompt_kind = "image"  # invalid kinds are rejected by verify_creative below
+    extract_prompt = EXTRACT_PROMPTS[prompt_kind]
+    trace.prompt_hashes = {p: prompt_hash(p) for p in
+                           ("personas", extract_prompt, "respond", "synthesize")}
     trace.code_revision = code_revision()
     t0 = time.perf_counter()
+    known_media: dict = {}
 
     async def _run() -> EvaluationResult:
         transition(trace, "RECEIVED")
@@ -903,11 +908,15 @@ async def run_pipeline(
         try:
             brief = parse_brief(brief_data)
             questions = select_questions(question_ids)
-            content, mime, checksum = verify_image(image, filename, content_type)
+            content, mime, checksum, media = verify_creative(image, filename, content_type, kind)
         except (BriefInvalid, ImageInvalid, ValidationError, ValueError) as e:
             trace.warnings.append(str(e)[:500])
             return _finish("extraction_invalid" if isinstance(e, ImageInvalid) else "persona_invalid"
                            if isinstance(e, (BriefInvalid, ValidationError, ValueError)) else "pipeline_error")
+        known_media["media"] = media  # survives a timeout so the report keeps its format
+        size_warning = banner_size_warning(media)
+        if size_warning:
+            trace.warnings.append(size_warning)
         transition(trace, "VALIDATED")
         # --- personas (clamp defensively; HTTP boundary rejects out-of-range first)
         try:
@@ -915,27 +924,30 @@ async def run_pipeline(
                 brief, client, trace, n=max(1, min(persona_count, MAX_PERSONAS)))
         except PersonaInvalid as e:
             trace.warnings.append(f"persona_invalid: {e}")
-            return _finish("persona_invalid", brief=brief)
+            return _finish("persona_invalid", brief=brief, media=media)
         except LLMError as e:
             trace.warnings.append(f"personas provider failure: {e}")
-            return _finish("budget_exhausted" if "budget" in str(e).lower() else "pipeline_error", brief=brief)
+            return _finish("budget_exhausted" if "budget" in str(e).lower() else "pipeline_error",
+                           brief=brief, media=media)
         transition(trace, "PERSONAS_READY")
         # --- extraction
         try:
-            extraction = await extract_ad(content, mime, checksum, client, trace)
+            extraction = await extract_ad(content, mime, checksum, client, trace,
+                                          prompt_name=EXTRACT_PROMPTS[media.kind])
         except ExtractionInvalid as e:
             trace.warnings.append(f"extraction_invalid: {e}")
-            return _finish("extraction_invalid", brief=brief, persona_set=persona_set)
+            return _finish("extraction_invalid", brief=brief, persona_set=persona_set, media=media)
         transition(trace, "EXTRACTION_READY")
         # --- responses (invalid personas never reach scoring: checked above)
-        responses = await collect_responses(persona_set, extraction, questions, client, trace)
+        responses = await collect_responses(persona_set, extraction, questions, client, trace,
+                                            context=VIEWING_CONTEXT.get(media.kind, ""))
         expected = len(persona_set.personas) * len(questions)
         got = sum(len(r.answers) for r in responses)
         if got == 0 or got < expected * MIN_VALID_FRACTION:
             trace.warnings.append(f"incomplete-panel: {got}/{expected} answers (<50%)")
             return _finish("insufficient_evidence", brief=brief,
                            persona_set=persona_set, extraction=extraction, responses=responses,
-                           scores=aggregate(responses, [q.id for q in questions]))
+                           scores=aggregate(responses, [q.id for q in questions]), media=media)
         transition(trace, "RESPONSES_READY")
         # --- aggregate (deterministic; snapshot so synthesis cannot move numbers)
         scores = aggregate(responses, [q.id for q in questions])
@@ -951,13 +963,15 @@ async def run_pipeline(
         except LLMError as e:
             trace.warnings.append(f"synthesis unavailable: {e}")
             status = "complete_with_warnings"
+        uncertainty = [f"synthetic-panel dispersion, not population CI (n={scores.valid_responses})",
+                       "experimental screening signal; not a replacement for human research"]
+        if media.kind in KIND_UNCERTAINTY:
+            uncertainty.insert(0, KIND_UNCERTAINTY[media.kind])
         result = EvaluationResult(
             evaluation_id=eid, status="complete", brief=brief,  # type: ignore[assignment]
-            personas=persona_set, extraction=extraction, responses=responses,
+            media=media, personas=persona_set, extraction=extraction, responses=responses,
             scores=scores, themes=themes, recommendations=recommendations,
-            uncertainty=[*(f"synthetic-panel dispersion, not population CI (n={scores.valid_responses})",
-                            "experimental screening signal; not a replacement for human research")],
-            trace=trace,
+            uncertainty=uncertainty, trace=trace,
         )
         verdict = await critic(result, client, trace)
         if not verdict.passed:
@@ -972,12 +986,16 @@ async def run_pipeline(
         result.status = status  # type: ignore[assignment]
         return _finish_status(result)
 
-    def _finish(status, brief=None, persona_set=None, extraction=None, responses=None, scores=None):
+    def _finish(status, brief=None, persona_set=None, extraction=None, responses=None,
+                scores=None, media=None):
         from datetime import datetime, timezone
+        uncertainty = []
+        if media is not None and media.kind in KIND_UNCERTAINTY:
+            uncertainty.append(KIND_UNCERTAINTY[media.kind])
         result = EvaluationResult(
-            evaluation_id=eid, status=status, brief=brief, personas=persona_set,  # type: ignore[assignment]
-            extraction=extraction, responses=responses or [],
-            scores=scores or ScoreSummary(), trace=trace,
+            evaluation_id=eid, status=status, media=media, brief=brief,  # type: ignore[assignment]
+            personas=persona_set, extraction=extraction, responses=responses or [],
+            scores=scores or ScoreSummary(), uncertainty=uncertainty, trace=trace,
         )
         return _finish_status(result)
 
@@ -997,7 +1015,7 @@ async def run_pipeline(
         return await asyncio.wait_for(_run(), timeout=_pipeline_timeout_s())
     except asyncio.TimeoutError:
         trace.warnings.append("budget_exhausted: wall-clock timeout")
-        return _finish("budget_exhausted")
+        return _finish("budget_exhausted", media=known_media.get("media"))
     except asyncio.CancelledError:
         trace.warnings.append("cancelled")
         raise

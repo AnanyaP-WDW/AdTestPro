@@ -10,6 +10,7 @@ import os
 from collections import Counter
 from typing import Optional
 
+from app.core.media import KIND_LABELS
 from app.report.charts import radar_svg
 
 RATING_SCALE = 5
@@ -186,6 +187,11 @@ def build_report_view(result, question_ids: Optional[list[str]] = None) -> dict:
     configured_pool = [m.strip() for m in os.getenv("ADTESTPRO_MODELS", "").split(",")
                        if m.strip()]
 
+    # Creative facts are server-stamped; older stored runs have no media block.
+    media = getattr(result, "media", None)
+    media_kind = media.kind if media else "image"
+    media_dims = f"{media.width}×{media.height} px" if media and media.width else None
+
     obs_ids = {o.id for o in result.extraction.observations} if result.extraction else set()
     response_map = {r.persona_id: r.answers for r in result.responses}
     response_models = {r.persona_id: r.model for r in result.responses}
@@ -194,6 +200,9 @@ def build_report_view(result, question_ids: Optional[list[str]] = None) -> dict:
 
     return {
         "result": result,
+        "media_kind": media_kind,
+        "media_label": KIND_LABELS.get(media_kind, "Image ad"),
+        "media_dims": media_dims,
         "status_label": STATUS_LABELS.get(result.status, (result.status, "warn"))[0],
         "status_kind": STATUS_LABELS.get(result.status, (result.status, "warn"))[1],
         "q_labels": labels,
