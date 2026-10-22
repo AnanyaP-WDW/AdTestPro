@@ -6,17 +6,32 @@ from typing import Annotated, Literal, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Stable version strings for prompts / pipeline / schemas.
-PIPELINE_VERSION = "v0.1.0"
-SCHEMA_VERSION = "v0.1.0"
+PIPELINE_VERSION = "v0.2.0"
+SCHEMA_VERSION = "v0.2.0"
 MAX_PERSONAS = 25  # user-selectable panel size ceiling (schema-level bound)
 PROMPT_VERSIONS = {
     "personas": "personas-v5",
     "extract_ad": "extract_ad-v2",
+    "extract_banner": "extract_banner-v1",
+    "extract_design": "extract_design-v1",
     "respond": "respond-v3",
     "synthesize": "synthesize-v1",
     "consistency": "consistency-v2",
     "critic": "critic-v1",
 }
+
+MediaKind = Literal["image", "banner", "design"]
+
+
+class MediaInfo(BaseModel):
+    """Server-stamped facts about the uploaded creative (never model-supplied)."""
+
+    kind: MediaKind = "image"
+    mime: str = ""
+    checksum: str = ""
+    width: int = 0
+    height: int = 0
+    bytes: int = 0
 
 Rating = Annotated[int, Field(ge=1, le=5)]
 Confidence = Annotated[int, Field(ge=0, le=100)]
@@ -338,6 +353,8 @@ class EvaluationTrace(BaseModel):
 class EvaluationResult(BaseModel):
     evaluation_id: str
     status: TerminalStatus
+    # Optional: runs stored before multi-format support have no media block.
+    media: Optional[MediaInfo] = None
     brief: Optional[AudienceBrief] = None
     personas: Optional[PersonaSet] = None
     extraction: Optional[AdExtraction] = None
