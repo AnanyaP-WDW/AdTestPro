@@ -6,6 +6,10 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 # Settings, preferences, and run history live here; mount a volume to persist.
 ENV ADTESTPRO_DATA_DIR=/data
+# Headless container: there is no OS keychain or session bus here. Keys live in
+# the /data volume (0600). Probing SecretService would import a native crypto
+# stack that can kill the process, which a Python timeout cannot catch.
+ENV ADTESTPRO_DISABLE_KEYRING=1
 RUN mkdir -p /data
 
 # WeasyPrint (PDF export) needs pango/cairo at runtime; DejaVu gives it fonts.

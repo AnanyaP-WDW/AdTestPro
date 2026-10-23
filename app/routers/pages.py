@@ -34,6 +34,7 @@ from app.core.settings import (
     ProviderSettings,
     apply_settings,
     base_url_error,
+    key_looks_wrong,
     mismatch_warnings,
     new_key_id,
     probe_connection,
@@ -366,6 +367,8 @@ def _handle_key_action(request: Request, tpl, cur: ProviderSettings, action: str
             errs["key_label"] = "That label is already used."
         if not value:
             errs["key_value"] = "API key is required."
+        elif key_looks_wrong(value):
+            errs["key_value"] = key_looks_wrong(value)
         url_problem = base_url_error(base)
         if url_problem:
             errs["key_base_url"] = url_problem
@@ -393,6 +396,8 @@ def _handle_key_action(request: Request, tpl, cur: ProviderSettings, action: str
             errs["edit_label"] = "Label is required."
         elif any(k.label.strip() == label for k in cur.keys if k.id != key_id):
             errs["edit_label"] = "That label is already used."
+        if edit_value.strip() and key_looks_wrong(edit_value):
+            errs["edit_value"] = key_looks_wrong(edit_value)
         url_problem = base_url_error(edit_base_url)
         if url_problem:
             errs["edit_base_url"] = url_problem
@@ -487,7 +492,8 @@ async def save_settings_page(
                                                       values=values, selected=selected,
                                                       pool_warning=pool_warning),
                                         status_code=422)
-        ok, msg = probe_connection(active.key, active.base_url, 10.0)
+        ok, msg = probe_connection(active.key, active.base_url, 10.0,
+                                   cur.effective_model())
         return tpl.TemplateResponse(request, "settings.html",
                                     _settings_ctx(request, probe_result=(ok, msg), values=values,
                                                   selected=selected, pool_warning=pool_warning))

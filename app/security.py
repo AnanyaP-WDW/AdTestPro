@@ -9,12 +9,15 @@ from __future__ import annotations
 
 import base64
 import binascii
+import logging
 import os
 import secrets
 from urllib.parse import urlsplit
 
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
+
+logger = logging.getLogger("adtestpro.security")
 
 AUTH_ENV = "ADTESTPRO_AUTH_TOKEN"
 OPEN_PATHS = {"/health"}  # Docker healthcheck stays unauthenticated
@@ -62,17 +65,20 @@ def authorized(request: Request) -> bool:
 
 
 def same_origin(request: Request) -> bool:
-    """Reject cross-site writes (CSRF). Non-browser clients send no Origin."""
-    site = request.headers.get("sec-fetch-site", "").strip().lower()
-    if site and site not in SAFE_FETCH_SITES:
-        return False
-    origin = request.headers.get("origin")
-    if origin is None:
-        return True
-    if origin == "null":
-        return False
+    """Reject cross-site writes (CSRF).
+
+    Origin is authoritative when the browser sends one. Sandboxed preview panes
+    send `Origin: null`, so there the fetch-metadata hint is the only signal.
+    Non-browser clients (curl, tests) send neither and are not CSRF-able.
+    """
     host = request.headers.get("host", "").strip().lower()
-    return bool(host) and urlsplit(origin).netloc.lower() == host
+    origin = request.headers.get("origin")
+    if origin and origin != "null":
+        return bool(host) and urlsplit(origin).netloc.lower() == host
+    site = request.headers.get("sec-fetch-site", "").strip().lower()
+    if not site:
+        return origin is None  # opaque origin with no hint is refused
+    return site in SAFE_FETCH_SITES
 
 
 def _finish(response, path: str):
@@ -93,5 +99,9 @@ async def security_middleware(request: Request, call_next):
             response.headers["WWW-Authenticate"] = 'Basic realm="AdTestPro", charset="UTF-8"'
             return _finish(response, path)
         if request.method in UNSAFE_METHODS and not same_origin(request):
+            # Header values only: enough to diagnose a proxy/preview pane, no secrets.
+            logger.warning("refused %s %s origin=%r host=%r sec-fetch-site=%r",
+                           request.method, path, request.headers.get("origin"),
+                           request.headers.get("host"), request.headers.get("sec-fetch-site"))
             return _finish(PlainTextResponse("Cross-origin request refused.", status_code=403), path)
     return _finish(await call_next(request), path)

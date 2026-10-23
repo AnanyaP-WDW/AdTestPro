@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from app.core.models import EvaluationResult
-from app.core.paths import REPO_ROOT, data_dir
+from app.core.paths import REPO_ROOT, custom_data_dir, data_dir
 
 logger = logging.getLogger("adtestpro.runs")
 
@@ -89,7 +89,7 @@ def connect(path: Optional[Path] = None) -> sqlite3.Connection:
         path = Path(path)
     else:
         path = default_path()
-        if not path.exists():
+        if not path.exists() and not custom_data_dir():
             legacy = _legacy_path()
             if legacy.exists():
                 path = legacy  # migrate on next write

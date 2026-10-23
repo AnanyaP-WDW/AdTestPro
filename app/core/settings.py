@@ -17,9 +17,10 @@ import json
 import logging
 import os
 import secrets
+import sys
 from dataclasses import dataclass, field
 
-from app.core.paths import REPO_ROOT, data_dir
+from app.core.paths import REPO_ROOT, custom_data_dir, data_dir
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlsplit
@@ -39,7 +40,11 @@ def default_path() -> Path:
 
 
 def _legacy_path() -> Path:
-    """Pre-data-dir location (repo root); read once so settings aren't lost."""
+    """Pre-data-dir location (repo root); read once so local settings aren't lost.
+
+    Only used when the data dir is the default — a container volume must stay
+    hermetic, not inherit whatever the bind mount happens to expose.
+    """
     return REPO_ROOT / SETTINGS_FILENAME
 
 
@@ -86,8 +91,16 @@ KEYRING_TIMEOUT_S = 1.5  # never let a locked/headless keychain block startup
 
 
 def _keyring_disabled() -> bool:
-    """Kill-switch for headless/CI/locked-keychain environments."""
-    return bool(os.getenv("ADTESTPRO_DISABLE_KEYRING", "").strip())
+    """Kill-switch for headless/CI/locked-keychain environments.
+
+    SecretService needs a session bus; without one, importing the backend pulls
+    a native crypto stack that can SIGILL in minimal containers — a signal a
+    Python-level timeout cannot contain.
+    """
+    if os.getenv("ADTESTPRO_DISABLE_KEYRING", "").strip():
+        return True
+    return sys.platform.startswith("linux") and not (
+        os.getenv("DBUS_SESSION_BUS_ADDRESS") or os.getenv("XDG_RUNTIME_DIR"))
 
 
 def _with_timeout(fn, default=None, timeout_s: Optional[float] = None):
@@ -362,7 +375,7 @@ def load_settings(path: Optional[Path] = None) -> ProviderSettings:
     """Missing or corrupt file -> empty settings (env still applies to models)."""
     if path is None:
         path = default_path()
-        if not path.exists():
+        if not path.exists() and not custom_data_dir():
             legacy = _legacy_path()
             if legacy.exists():
                 path = legacy  # migrate on next save
@@ -434,25 +447,56 @@ def apply_settings(settings: ProviderSettings) -> None:
     llm.reset_client()
 
 
-def probe_connection(api_key: str, base_url: str, timeout_s: float = 10.0) -> tuple[bool, str]:
-    """Provider reachability check against the *resolved* endpoint (never logs the key).
+HASH_PREFIXES = ("$2a$", "$2b$", "$2y$", "$argon2", "$pbkdf2", "$scrypt$")
 
-    Uses `GET {base}/models`, which OpenAI-compatible providers (OpenAI, OpenRouter)
-    expose, so the probe tests exactly where the pipeline will send calls.
+
+def key_looks_wrong(value: str) -> Optional[str]:
+    """Catch obvious paste mistakes before they cost a failed run."""
+    key = (value or "").strip()
+    if not key:
+        return None
+    if key.startswith(HASH_PREFIXES):
+        return "This looks like a password hash, not an API key."
+    if any(c.isspace() for c in key):
+        return "API keys do not contain spaces or line breaks."
+    return None
+
+
+def probe_connection(api_key: str, base_url: str, timeout_s: float = 10.0,
+                     model: str = "") -> tuple[bool, str]:
+    """Authenticated round-trip against the *resolved* endpoint (never logs the key).
+
+    GET /models is not a real check: some providers (OpenRouter) serve it
+    publicly, so any string looks connected. A 1-token chat call verifies the
+    key, the endpoint, and the model together — exactly what the pipeline does.
     """
     import httpx  # local import: keeps settings importable without http deps
 
     base = resolve_base_url(base_url)
+    use_model = model.strip() or os.getenv("ADTESTPRO_MODEL", "").strip() or DEFAULT_MODEL
+    secret = api_key.strip()
+    payload = {"model": use_model, "messages": [{"role": "user", "content": "ping"}],
+               "max_tokens": 8}
     try:
-        r = httpx.get(f"{base}/models", headers={"Authorization": f"Bearer {api_key.strip()}"},
-                      timeout=max(1.0, timeout_s))
+        r = httpx.post(f"{base}/chat/completions",
+                       headers={"Authorization": f"Bearer {secret}"},
+                       json=payload, timeout=max(1.0, timeout_s))
     except Exception as e:
         return False, f"unreachable: {type(e).__name__} · {base}"
     if r.status_code == 200:
-        return True, f"connected · {base}"
+        return True, f"connected · {use_model} · {base}"
     if r.status_code in (401, 403):
-        return False, f"key rejected (401/403) · {base}"
-    return False, f"unexpected status {r.status_code} · {base}"
+        return False, f"key rejected ({r.status_code}) · {base}"
+    if r.status_code == 404:
+        return False, f"model or endpoint not found (404) · {use_model} · {base}"
+    detail = ""
+    try:
+        error = r.json().get("error")
+        detail = str(error.get("message") if isinstance(error, dict) else error or "")[:120]
+    except Exception:
+        pass
+    detail = detail.replace(secret, "<key>")
+    return False, f"unexpected status {r.status_code}{' · ' + detail if detail else ''} · {base}"
 
 
 def mismatch_warnings(settings: "ProviderSettings") -> list[str]:

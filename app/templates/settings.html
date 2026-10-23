@@ -89,13 +89,17 @@
                     <div class="field">
                         <label class="field__label" for="edit_value_{{ k.id }}">New API key</label>
                         <input class="input" type="password" id="edit_value_{{ k.id }}" name="edit_value"
-                               autocomplete="new-password" placeholder="Leave blank to keep current">
+                               autocomplete="new-password" placeholder="Leave blank to keep current"
+                               {% if field_errors.get('edit_value') %}aria-invalid="true"{% endif %}>
                         <p class="field__help">Set only to replace the secret.</p>
+                        {% if field_errors.get('edit_value') %}<p class="field__error">{{ field_errors['edit_value'] }}</p>{% endif %}
                     </div>
                     <div class="field">
                         <label class="field__label" for="edit_base_url_{{ k.id }}">Base URL</label>
                         <input class="input" type="text" id="edit_base_url_{{ k.id }}" name="edit_base_url" maxlength="200"
-                               value="{{ ef.get('base_url', k.base_url) }}" placeholder="Blank = OpenRouter ({{ default_base_url }})">
+                               value="{{ ef.get('base_url', k.base_url) }}" placeholder="Blank = OpenRouter ({{ default_base_url }})"
+                               {% if field_errors.get('edit_base_url') %}aria-invalid="true"{% endif %}>
+                        {% if field_errors.get('edit_base_url') %}<p class="field__error">{{ field_errors['edit_base_url'] }}</p>{% endif %}
                     </div>
                 </div>
                 <div class="action-bar">
@@ -130,8 +134,10 @@
                     <label class="field__label" for="key_base_url">Base URL</label>
                     <input class="input" type="text" id="key_base_url" name="key_base_url" maxlength="200"
                            list="base-url-presets" placeholder="{{ default_base_url }}"
-                           value="{{ key_form.get('base_url', '') }}">
+                           value="{{ key_form.get('base_url', '') }}"
+                           {% if field_errors.get('key_base_url') %}aria-invalid="true"{% endif %}>
                     <p class="field__help">Blank = OpenRouter (<code>{{ default_base_url }}</code>). Set per key; use an OpenAI URL for OpenAI-direct keys.</p>
+                    {% if field_errors.get('key_base_url') %}<p class="field__error">{{ field_errors['key_base_url'] }}</p>{% endif %}
                 </div>
             </div>
             <datalist id="base-url-presets">
@@ -229,7 +235,7 @@
     </section>
 
     <div class="action-bar">
-        <p class="action-bar__summary">Single-user tool: these settings apply to everyone using this server.</p>
+        <p class="action-bar__summary">Single-user tool: these settings apply to everyone using this server. Testing sends one tiny (8-token) request.</p>
         <button type="submit" name="action" value="test" class="btn btn--ghost">Test connection</button>
         <button type="submit" name="action" value="save" class="btn btn--primary">Save settings</button>
     </div>
