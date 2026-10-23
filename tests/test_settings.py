@@ -153,39 +153,63 @@ def test_apply_flows_into_real_consumers(monkeypatch):
     assert llm._timeout_s() == 45.0
 
 
-def test_probe_hits_resolved_endpoint_and_reports_it(monkeypatch):
+def test_probe_sends_an_authenticated_chat_call(monkeypatch):
     import httpx
     from app.core.settings import DEFAULT_BASE_URL, probe_connection
 
     seen: dict = {}
 
     class _R:
-        def __init__(self, code):
+        def __init__(self, code, body=None):
             self.status_code = code
+            self._body = body or {}
 
-    def _get(url, **k):
-        seen["url"] = url
+        def json(self):
+            return self._body
+
+    def _post(url, **k):
+        seen.update(url=url, json=k.get("json"), headers=k.get("headers"))
         return _R(200)
 
-    monkeypatch.setattr(httpx, "get", _get)
-    ok, msg = probe_connection("k", "")  # blank -> OpenRouter default
-    assert ok and DEFAULT_BASE_URL in msg
-    assert seen["url"] == f"{DEFAULT_BASE_URL}/models"
+    monkeypatch.setattr(httpx, "post", _post)
+    ok, msg = probe_connection("sk-or-v1-test", "", model="openai/gpt-4o-mini")
+    assert ok and "openai/gpt-4o-mini" in msg and DEFAULT_BASE_URL in msg
+    # /models is public on some providers; the probe must make a real call.
+    assert seen["url"] == f"{DEFAULT_BASE_URL}/chat/completions"
+    assert seen["json"]["model"] == "openai/gpt-4o-mini"
+    assert seen["json"]["max_tokens"] == 8
+    assert seen["headers"]["Authorization"] == "Bearer sk-or-v1-test"
 
-    monkeypatch.setattr(httpx, "get", lambda *a, **k: _R(401))
-    ok, msg = probe_connection("bad", "https://api.openai.com/v1")
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _R(401))
+    ok, msg = probe_connection("bad", "https://api.openai.com/v1", model="gpt-4o-mini")
     assert not ok and "401" in msg and "api.openai.com" in msg
 
-    monkeypatch.setattr(httpx, "get", lambda *a, **k: _R(404))
-    ok, msg = probe_connection("k", "https://example.test/v1")
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _R(404))
+    ok, msg = probe_connection("k", "https://example.test/v1", model="m")
     assert not ok and "404" in msg
+
+    # Provider text may echo request data: the key must never appear in the message.
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _R(
+        429, {"error": {"message": "rate limited for sk-or-v1-secret"}}))
+    ok, msg = probe_connection("sk-or-v1-secret", "")
+    assert not ok and "429" in msg and "rate limited" in msg
+    assert "sk-or-v1-secret" not in msg
 
     def _boom(*a, **k):
         raise httpx.ConnectError("down")
 
-    monkeypatch.setattr(httpx, "get", _boom)
+    monkeypatch.setattr(httpx, "post", _boom)
     ok, msg = probe_connection("k", "")
     assert not ok and "unreachable" in msg
+
+
+def test_key_paste_mistakes_are_caught():
+    from app.core.settings import key_looks_wrong
+
+    assert "password hash" in key_looks_wrong("$2b$12$abcdefghijklmnopqrstuv")
+    assert "spaces" in key_looks_wrong("sk-or-v1-abc def")
+    assert key_looks_wrong("sk-or-v1-abc123") is None
+    assert key_looks_wrong("") is None
 
 
 def test_resolve_base_url_defaults_to_openrouter():
@@ -344,3 +368,35 @@ def test_secret_source_never_breaks_equality():
     assert ApiKey(id="a", label="A", key="x") == ApiKey(
         id="a", label="A", key="x", secret_source="keyring")
 
+
+
+def test_keyring_is_disabled_on_headless_linux(monkeypatch):
+    """No session bus -> never import SecretService (it can SIGILL in slim images)."""
+    from app.core import settings as s
+
+    monkeypatch.delenv("ADTESTPRO_DISABLE_KEYRING", raising=False)
+    monkeypatch.delenv("DBUS_SESSION_BUS_ADDRESS", raising=False)
+    monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
+    monkeypatch.setattr(s.sys, "platform", "linux")
+    assert s._keyring_disabled() is True
+    assert s.keyring_available() is False
+    assert s.keyring_get("anything") is None
+
+    # A real session bus keeps the keychain option on a Linux desktop.
+    monkeypatch.setenv("DBUS_SESSION_BUS_ADDRESS", "unix:path=/run/user/1000/bus")
+    assert s._keyring_disabled() is False
+
+
+def test_custom_data_dir_ignores_legacy_settings(tmp_path, monkeypatch):
+    """A container volume must not inherit the host's bind-mounted settings file."""
+    from app.core import settings as s
+
+    legacy = tmp_path / "legacy-settings.json"
+    legacy.write_text(json.dumps({"api_key": "host-only", "base_url": "https://host"}))
+    monkeypatch.setattr(s, "_legacy_path", lambda: legacy)
+
+    monkeypatch.delenv("ADTESTPRO_DATA_DIR", raising=False)
+    assert s.load_settings().effective_api_key() == "host-only"  # local migration
+
+    monkeypatch.setenv("ADTESTPRO_DATA_DIR", str(tmp_path / "volume"))
+    assert s.load_settings().keys == []

@@ -231,8 +231,8 @@ def test_settings_test_connection_uses_active_key(monkeypatch):
     _saved(monkeypatch)
     seen: dict = {}
 
-    def _probe(key, base_url, timeout_s=10.0):
-        seen.update(key=key, base_url=base_url)
+    def _probe(key, base_url, timeout_s=10.0, model=""):
+        seen.update(key=key, base_url=base_url, model=model)
         return True, "connected"
 
     monkeypatch.setattr(pages_mod, "probe_connection", _probe)
@@ -242,7 +242,9 @@ def test_settings_test_connection_uses_active_key(monkeypatch):
     r = c.post("/settings", data={"action": "test", "model": "", "image_model": "", "timeout_s": ""})
     assert r.status_code == 200
     assert "Connection OK" in r.text
-    assert seen == {"key": "active-key", "base_url": "https://openrouter.ai/api/v1"}
+    assert seen["key"] == "active-key"
+    assert seen["base_url"] == "https://openrouter.ai/api/v1"
+    assert seen["model"]  # probe tests the model the pipeline will use
 
 
 def test_settings_test_connection_without_key(monkeypatch):
@@ -376,3 +378,17 @@ def test_report_shows_model_mix_note():
         assert "single-family pool" in r.text
     finally:
         app.state.llm_client = None
+
+
+def test_key_add_rejects_password_hashes(monkeypatch):
+    previous = app.state.provider_settings
+    app.state.provider_settings = ProviderSettings()
+    try:
+        r = TestClient(app).post("/settings", data={
+            "action": "add_key", "key_label": "pasted-hash",
+            "key_value": "$2b$12$abcdefghijklmnopqrstuv", "key_base_url": ""})
+        assert r.status_code == 422
+        assert "password hash" in r.text.lower()
+        assert not app.state.provider_settings.keys
+    finally:
+        app.state.provider_settings = previous

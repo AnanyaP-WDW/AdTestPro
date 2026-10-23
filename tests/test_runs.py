@@ -133,3 +133,19 @@ def test_responses_carry_model_labels(monkeypatch):
     res = asyncio.run(main())
     assert res.status == "complete"
     assert res.responses and all(r.model == "injected-fake" for r in res.responses)
+
+
+def test_custom_data_dir_ignores_legacy_db(tmp_path, monkeypatch):
+    """A container volume must not read the host's bind-mounted run history."""
+    from app.core import runs as r
+
+    legacy = tmp_path / "legacy.db"
+    r.save_run(_result("e1"), path=legacy)
+    monkeypatch.setattr(r, "_legacy_path", lambda: legacy)
+    monkeypatch.setenv("ADTESTPRO_DATA_DIR", str(tmp_path / "volume"))
+    assert r.list_runs() == []
+
+    # Default data dir with no file yet: the legacy DB is still migrated.
+    monkeypatch.delenv("ADTESTPRO_DATA_DIR", raising=False)
+    monkeypatch.setattr(r, "default_path", lambda: tmp_path / "fresh" / "adtestpro.db")
+    assert [x["evaluation_id"] for x in r.list_runs()] == ["e1"]
