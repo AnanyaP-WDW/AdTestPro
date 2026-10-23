@@ -38,6 +38,17 @@ def test_cross_origin_write_is_refused(monkeypatch):
     assert c.post("/preferences/clear", headers={
         "Origin": "http://testserver", "Sec-Fetch-Site": "same-origin"},
         follow_redirects=False).status_code == 303
+    # Origin is authoritative: a mislabelled Sec-Fetch-Site cannot block it.
+    assert c.post("/preferences/clear", headers={
+        "Origin": "http://testserver", "Sec-Fetch-Site": "cross-site"},
+        follow_redirects=False).status_code == 303
+    # Sandboxed preview panes send an opaque origin plus fetch metadata.
+    assert c.post("/preferences/clear", headers={
+        "Origin": "null", "Sec-Fetch-Site": "same-origin"},
+        follow_redirects=False).status_code == 303
+    assert c.post("/preferences/clear", headers={
+        "Origin": "null", "Sec-Fetch-Site": "cross-site"}).status_code == 403
+    assert c.post("/preferences/clear", headers={"Origin": "null"}).status_code == 403
 
 
 def test_security_headers_and_no_store(monkeypatch):
