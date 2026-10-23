@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import io
 from dataclasses import replace
@@ -23,6 +24,8 @@ from app.core.pipeline import (
     select_questions,
     verify_image,
 )
+from app.core.active import ACTIVE, consume_task_error, new_run_id
+from app.core.media import KIND_LABELS
 from app.core.models import AudienceBrief, EvaluationResult
 from app.core import runs as runs_store
 from app.core import prefs as prefs_store
@@ -121,6 +124,10 @@ def _field_errors(form: dict) -> dict[str, str]:
 
 @router.get("/", response_class=HTMLResponse)
 async def form_page(request: Request):
+    active = ACTIVE.current()
+    if active is not None:
+        # One run at a time: every visitor lands on the live view.
+        return RedirectResponse(url=f"/runs/{active.evaluation_id}/live", status_code=303)
     ready, missing = _readiness(request)
     prefs = prefs_store.load_prefs()
     return _templates(request).TemplateResponse(request, "form.html", {
@@ -228,6 +235,11 @@ async def evaluate_page(
     except OSError:
         pass  # a read-only data dir must never break a run
 
+    active = ACTIVE.current()
+    if active is not None:
+        return RedirectResponse(url=f"/runs/{active.evaluation_id}/live?busy=1",
+                                status_code=303)
+
     content = await image.read(MAX_IMAGE_BYTES + 2)
     try:
         content, mime, checksum = verify_image(content, image.filename or "upload",
@@ -236,24 +248,42 @@ async def evaluate_page(
         return _render_form_error(request, 422, "The creative could not be used.",
                                   {"image": str(e)}, keep, qids, kind)
 
+    eid = new_run_id()
+    if not ACTIVE.claim(eid, kind=kind, panel_size=persona_count, questions=len(qids)):
+        current = ACTIVE.current()
+        target = f"/runs/{current.evaluation_id}/live?busy=1" if current else "/"
+        return RedirectResponse(url=target, status_code=303)
+
+    client = getattr(request.app.state, "llm_client", None)
+
+    async def _run_tracked() -> tuple[EvaluationResult, Optional[str], Optional[str]]:
+        try:
+            result = await run_pipeline(
+                brief_data=brief_data, image=content,
+                filename=image.filename or "upload",
+                content_type=mime,
+                question_ids=qids, client=client, persona_count=persona_count,
+                kind=kind, evaluation_id=eid, progress=ACTIVE.update,
+            )
+            thumb = _thumbnail_uri(
+                content, mime,
+                LARGE_THUMB_MAX_PX if kind in ("banner", "design") else THUMB_MAX_PX)
+            return result, thumb, runs_store.record(result, thumb)
+        finally:
+            ACTIVE.finish(eid)
+
+    # Shielded task: leaving the page (or the server cancelling the request)
+    # does not lose the run — it still records, and the live view follows it.
+    task = asyncio.create_task(_run_tracked())
+    task.add_done_callback(consume_task_error)
     try:
-        client = getattr(request.app.state, "llm_client", None)
-        result = await run_pipeline(
-            brief_data=brief_data, image=content,
-            filename=image.filename or "upload",
-            content_type=mime,
-            question_ids=qids, client=client, persona_count=persona_count, kind=kind,
-        )
+        result, thumb_uri, recorded = await asyncio.shield(task)
     except Exception:
         # ponytail: safe error page, never raw tracebacks outward.
         return tpl.TemplateResponse(request, "results.html",
                                     {"error": "Evaluation failed. Check inputs and retry.",
                                      "result": None, "ready": _readiness(request)[0],
                                      "nav": "evaluate", "form_values": keep}, status_code=502)
-
-    thumb_uri = _thumbnail_uri(content, mime,
-                               LARGE_THUMB_MAX_PX if kind in ("banner", "design") else THUMB_MAX_PX)
-    recorded = runs_store.record(result, thumb_uri)
     ctx = {
         "error": None, "ready": _readiness(request)[0], "nav": "evaluate",
         **_results_ctx(result, qids, thumb_uri, persona_count,
@@ -516,7 +546,7 @@ async def runs_page(request: Request):
         "ready": ready, "ready_missing": missing, "nav": "runs",
         "rows": rows, "db_error": db_error, "q_labels": QUESTION_LABELS,
         "status_labels": {k: v[0] for k, v in STATUS_LABELS.items()},
-        "pdf_available": engine_available(),
+        "pdf_available": engine_available(), "active": ACTIVE.current(),
     })
 
 
@@ -524,6 +554,9 @@ async def runs_page(request: Request):
 async def run_detail_page(request: Request, evaluation_id: str):
     tpl = _templates(request)
     ready, missing = _readiness(request)
+    active = ACTIVE.current()
+    if active is not None and active.evaluation_id == evaluation_id:
+        return RedirectResponse(url=f"/runs/{evaluation_id}/live", status_code=303)
     base = {"ready": ready, "ready_missing": missing, "nav": "runs"}
     try:
         row = runs_store.get_run(evaluation_id)
@@ -536,6 +569,47 @@ async def run_detail_page(request: Request, evaluation_id: str):
            **_results_ctx(result, row["question_ids"], row["thumb_uri"],
                           pdf_available=engine_available())}
     return tpl.TemplateResponse(request, "results.html", ctx)
+
+
+@router.get("/runs/{evaluation_id}/live", response_class=HTMLResponse)
+async def run_live_page(request: Request, evaluation_id: str):
+    """Live view for the one in-flight run; finished runs go to the report."""
+    tpl = _templates(request)
+    ready, missing = _readiness(request)
+    active = ACTIVE.current()
+    if active is not None and active.evaluation_id == evaluation_id:
+        return tpl.TemplateResponse(request, "live.html", {
+            "ready": ready, "ready_missing": missing, "nav": "evaluate",
+            "evaluation_id": evaluation_id, "status": active.status(),
+            "busy": request.query_params.get("busy") == "1",
+            "kind_label": KIND_LABELS.get(active.kind, "Image ad"),
+        })
+    try:
+        runs_store.get_run(evaluation_id)
+    except RunRecordError:
+        return tpl.TemplateResponse(request, "results.html", {
+            "error_title": "Run unavailable",
+            "error": "This run was interrupted, expired, or was never stored. "
+                     "Start a new evaluation from the Evaluate page.",
+            "result": None, "ready": ready, "nav": "evaluate"}, status_code=404)
+    return RedirectResponse(url=f"/runs/{evaluation_id}", status_code=303)
+
+
+@router.get("/runs/{evaluation_id}/status")
+async def run_status(evaluation_id: str):
+    """JSON the live page polls. Reads the registry first, then the run store."""
+    active = ACTIVE.current()
+    if active is not None and active.evaluation_id == evaluation_id:
+        return active.status()
+    try:
+        runs_store.get_run(evaluation_id)
+    except RunRecordError:
+        return {"state": "unknown", "evaluation_id": evaluation_id,
+                "stage_label": "Interrupted or expired", "percent": 0,
+                "redirect_url": ""}
+    return {"state": "done", "evaluation_id": evaluation_id,
+            "stage_label": "Done", "percent": 100,
+            "redirect_url": f"/runs/{evaluation_id}"}
 
 
 @router.get("/runs/{evaluation_id}/report.pdf")

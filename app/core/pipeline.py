@@ -19,7 +19,7 @@ import time
 import uuid
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional, get_args
+from typing import Callable, Optional, get_args
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
@@ -753,16 +753,27 @@ async def collect_responses(
     client=None,
     trace: Optional[EvaluationTrace] = None,
     context: str = "",
+    on_answer: Optional[Callable[[int, int], None]] = None,
 ) -> list[PersonaResponse]:
     # Independent + concurrent; fixed limit enforced inside the llm adapter.
     # Judgment debias hedge: rotate the model pool by persona index (deterministic,
     # arrival-order independent). Non-respond stages stay on the primary model.
     pool = llm.model_pool(client)
-    results = await asyncio.gather(*[
-        _respond_one(p, extraction, questions, client, trace,
-                     model=pool[i % len(pool)], context=context)
-        for i, p in enumerate(persona_set.personas)
-    ])
+    total = len(persona_set.personas)
+    answered = 0
+
+    async def run_one(i: int, persona: Persona) -> Optional[PersonaResponse]:
+        nonlocal answered
+        response = await _respond_one(persona, extraction, questions, client, trace,
+                                      model=pool[i % len(pool)], context=context)
+        answered += 1
+        if on_answer is not None:
+            on_answer(answered, total)
+        return response
+
+    # gather keeps persona order, so synthesis input stays deterministic.
+    results = await asyncio.gather(*[run_one(i, p)
+                                     for i, p in enumerate(persona_set.personas)])
     return [r for r in results if r is not None]
 
 
@@ -886,6 +897,7 @@ async def run_pipeline(
     evaluation_id: Optional[str] = None,
     persona_count: int = PERSONA_COUNT,
     kind: object = "image",
+    progress: Optional[Callable[[str, int, int], None]] = None,
 ) -> EvaluationResult:
     """Explicit states, one repair per LLM stage, terminal outcomes only (S5)."""
     eid = evaluation_id or f"eval-{uuid.uuid4().hex[:12]}"
@@ -901,9 +913,23 @@ async def run_pipeline(
     trace.code_revision = code_revision()
     t0 = time.perf_counter()
     known_media: dict = {}
+    panel = {"done": 0, "total": 0}
+
+    def report(stage: str) -> None:
+        """Progress is advisory: a failing observer must never break a run."""
+        if progress is None:
+            return
+        try:
+            progress(stage, panel["done"], panel["total"])
+        except Exception:
+            logger.debug("progress observer failed", exc_info=True)
+
+    def advance(stage: str) -> None:
+        transition(trace, stage)
+        report(stage)
 
     async def _run() -> EvaluationResult:
-        transition(trace, "RECEIVED")
+        advance("RECEIVED")
         # --- validate (no LLM calls before this passes)
         try:
             brief = parse_brief(brief_data)
@@ -917,7 +943,7 @@ async def run_pipeline(
         size_warning = banner_size_warning(media)
         if size_warning:
             trace.warnings.append(size_warning)
-        transition(trace, "VALIDATED")
+        advance("VALIDATED")
         # --- personas (clamp defensively; HTTP boundary rejects out-of-range first)
         try:
             persona_set = await generate_personas(
@@ -929,7 +955,7 @@ async def run_pipeline(
             trace.warnings.append(f"personas provider failure: {e}")
             return _finish("budget_exhausted" if "budget" in str(e).lower() else "pipeline_error",
                            brief=brief, media=media)
-        transition(trace, "PERSONAS_READY")
+        advance("PERSONAS_READY")
         # --- extraction
         try:
             extraction = await extract_ad(content, mime, checksum, client, trace,
@@ -937,10 +963,16 @@ async def run_pipeline(
         except ExtractionInvalid as e:
             trace.warnings.append(f"extraction_invalid: {e}")
             return _finish("extraction_invalid", brief=brief, persona_set=persona_set, media=media)
-        transition(trace, "EXTRACTION_READY")
+        panel["total"] = len(persona_set.personas)
+        advance("EXTRACTION_READY")
         # --- responses (invalid personas never reach scoring: checked above)
+        def answered(done: int, total: int) -> None:
+            panel["done"], panel["total"] = done, total
+            report("EXTRACTION_READY")
+
         responses = await collect_responses(persona_set, extraction, questions, client, trace,
-                                            context=VIEWING_CONTEXT.get(media.kind, ""))
+                                            context=VIEWING_CONTEXT.get(media.kind, ""),
+                                            on_answer=answered)
         expected = len(persona_set.personas) * len(questions)
         got = sum(len(r.answers) for r in responses)
         if got == 0 or got < expected * MIN_VALID_FRACTION:
@@ -948,11 +980,11 @@ async def run_pipeline(
             return _finish("insufficient_evidence", brief=brief,
                            persona_set=persona_set, extraction=extraction, responses=responses,
                            scores=aggregate(responses, [q.id for q in questions]), media=media)
-        transition(trace, "RESPONSES_READY")
+        advance("RESPONSES_READY")
         # --- aggregate (deterministic; snapshot so synthesis cannot move numbers)
         scores = aggregate(responses, [q.id for q in questions])
         frozen = scores.model_dump_json()
-        transition(trace, "AGGREGATED")
+        advance("AGGREGATED")
         # --- synthesize + critic (text only)
         status: str = "complete"
         themes: list[Theme] = []
@@ -981,8 +1013,8 @@ async def run_pipeline(
         if any(q.disagreement for q in scores.per_question):
             status = "complete_high_disagreement" if status == "complete" else status
             trace.warnings.append("high disagreement: range widened, inspect minority themes")
-        transition(trace, "REVIEWED")
-        transition(trace, "COMPLETE")
+        advance("REVIEWED")
+        advance("COMPLETE")
         result.status = status  # type: ignore[assignment]
         return _finish_status(result)
 

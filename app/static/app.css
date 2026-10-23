@@ -366,6 +366,10 @@ legend { padding: 0; }
 .pending__title { font-size: 16px; font-weight: 700; }
 .pending__note { font-size: 13px; color: var(--ink-2); margin-top: 4px; }
 .pending__elapsed { font-size: 12px; color: var(--ink-3); margin-top: 14px; }
+.pending progress {
+  display: block; width: 100%; max-width: 380px; height: 8px;
+  margin: 16px auto 0; accent-color: var(--accent);
+}
 
 /* ---------------------------------------------------------------- results */
 .report__section { margin-top: 24px; }

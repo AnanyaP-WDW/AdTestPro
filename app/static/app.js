@@ -226,4 +226,13 @@
       }, 1000);
     }
   });
+
+  /* A restored back/forward-cache page can show a stale form or pending state.
+     Ask the server instead: while a run is active it redirects to the live view. */
+  window.addEventListener("pageshow", function (e) {
+    if (e.persisted && (document.getElementById("pending") ||
+                        document.getElementById("live"))) {
+      window.location.reload();
+    }
+  });
 })();

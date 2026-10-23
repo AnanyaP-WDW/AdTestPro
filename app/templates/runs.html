@@ -13,6 +13,14 @@
 </div>
 {% endif %}
 
+{% if active %}
+<div class="alert alert--warn" role="status">
+    <p class="alert__title">Evaluation in progress</p>
+    <p>Started {{ active.elapsed_s() }}s ago. One run at a time —
+        <a class="link" href="/runs/{{ active.evaluation_id }}/live">view the live evaluation</a>.</p>
+</div>
+{% endif %}
+
 {% if rows %}
 <div class="table-wrap" tabindex="0" role="region" aria-label="Evaluation runs table, scrollable">
     <table>
