@@ -1,0 +1,82 @@
+{% extends "layout.html" %}
+{% block title %}AdTestPro — Evaluation running{% endblock %}
+{% block crumbs %}<a href="/">Evaluate</a> <span aria-hidden="true">/</span> <span aria-current="page">Running</span>{% endblock %}
+{% block page_title %}Evaluation running{% endblock %}
+{% block page_sub %}{{ kind_label }} · panel of {{ status.panel_size }} · {{ evaluation_id }}{% endblock %}
+{% block content %}
+
+{% if busy %}
+<div class="alert alert--warn" role="status">
+    <p class="alert__title">One evaluation at a time</p>
+    <p>The run below is already in progress, so this submission was not started.</p>
+</div>
+{% endif %}
+
+<div class="card pending is-visible" id="live"
+     data-status-url="/runs/{{ evaluation_id }}/status">
+    <div class="pending__spinner" aria-hidden="true"></div>
+    <p class="pending__title" id="live-stage" aria-live="polite">{{ status.stage_label }}…</p>
+    <progress id="live-bar" max="100" value="{{ status.percent }}"
+              aria-label="Evaluation progress"></progress>
+    <p class="pending__elapsed tnum" id="live-elapsed">{{ status.elapsed_s }}s elapsed</p>
+    <p class="pending__note" id="live-panel">
+        {%- if status.personas_total -%}
+            {{ status.personas_done }} of {{ status.personas_total }} personas answered.
+        {%- else -%}
+            Preparing the panel.
+        {%- endif -%}
+    </p>
+    <p class="pending__note">You can leave this page or close the tab — reopening the app
+        brings you back to this run.</p>
+    <p class="pending__note" id="live-lost" hidden>This run was interrupted or expired.
+        <a class="link" href="/">Start a new evaluation</a>.</p>
+</div>
+
+<script>
+(function () {
+    var card = document.getElementById("live");
+    if (!card) return;
+    var url = card.getAttribute("data-status-url");
+    var stage = document.getElementById("live-stage");
+    var bar = document.getElementById("live-bar");
+    var elapsed = document.getElementById("live-elapsed");
+    var panel = document.getElementById("live-panel");
+    var lost = document.getElementById("live-lost");
+    var lastStage = "";
+
+    function render(data) {
+        if (data.state === "done" && data.redirect_url) {
+            window.location.replace(data.redirect_url);
+            return true;
+        }
+        if (data.state !== "running") {
+            lost.hidden = false;
+            card.classList.remove("is-visible");
+            return true;
+        }
+        if (data.stage_label && data.stage_label !== lastStage) {
+            lastStage = data.stage_label;
+            stage.textContent = data.stage_label + "…";
+        }
+        if (typeof data.percent === "number") bar.value = data.percent;
+        elapsed.textContent = data.elapsed_s + "s elapsed";
+        if (data.personas_total) {
+            panel.textContent = data.personas_done + " of " + data.personas_total +
+                " personas answered.";
+        }
+        return false;
+    }
+
+    function poll() {
+        fetch(url, {cache: "no-store", headers: {"Accept": "application/json"}})
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) {
+                if (data && !render(data)) window.setTimeout(poll, 1500);
+            })
+            .catch(function () { window.setTimeout(poll, 3000); });
+    }
+
+    poll();
+})();
+</script>
+{% endblock %}

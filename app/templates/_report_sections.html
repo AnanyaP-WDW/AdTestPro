@@ -3,10 +3,12 @@
    so the UI and the PDF cannot disagree on data. #}
 {% if error %}
 <div class="alert alert--danger" role="alert">
-    <p class="alert__title">Something went wrong</p>
+    <p class="alert__title">{{ error_title|default("Something went wrong") }}</p>
     <p>{{ error }}</p>
+    {% if form_values is defined %}
     <p>Your brief text was preserved, but the creative is <strong>not kept between attempts</strong> —
     <a class="link" href="/">start a new run</a> and re-attach it.</p>
+    {% endif %}
 </div>
 {% elif result %}
 <div data-status="{{ result.status }}" class="report">

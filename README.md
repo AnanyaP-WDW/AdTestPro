@@ -16,7 +16,7 @@
   <a href="https://github.com/AnanyaP-WDW/AdTestPro/actions/workflows/ci.yml"><img src="https://github.com/AnanyaP-WDW/AdTestPro/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/AnanyaP-WDW/AdTestPro/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-GPLv3%20%7C%20commercial-blue" alt="License: GPLv3 or commercial"></a>
   <img src="https://img.shields.io/badge/python-3.11-blue" alt="Python 3.11">
-  <img src="https://img.shields.io/badge/tests-189%20offline-brightgreen" alt="189 offline tests">
+  <img src="https://img.shields.io/badge/tests-225%20offline-brightgreen" alt="225 offline tests">
   <img src="https://img.shields.io/badge/built%20with-FastAPI-009485" alt="Built with FastAPI">
 </p>
 
@@ -276,6 +276,11 @@ Keychain access is bounded so a locked or headless keychain never blocks startup
 - **Runs** (nav bar): every terminal evaluation — browser or API, success or
   failure — is recorded in local SQLite (`data/adtestpro.db`, stdlib only) with
   its full report and thumbnail. Keys are never stored.
+- **One evaluation at a time.** While a run is active, every visit to `/` is
+  redirected to `/runs/{id}/live` — stage, answered personas, and a progress bar.
+  Leaving or closing the tab does not lose the run; it keeps going server-side and
+  records on completion. A second submission is redirected (browser) or rejected
+  with `409` (API). API runs set the same slot, so UI and API never run together.
 - Single-user assumption: settings and history are server-global. Concurrent
   users would share them — multi-user isolation needs auth and is out of scope.
 
@@ -285,7 +290,7 @@ Keychain access is bounded so a locked or headless keychain never blocks startup
   thresholds, and what's blocked on human data
 - `benchmarks/evaluate.py` — metrics + deterministic replay (`replay-cached`, `replay-fresh`)
   + the generic-vs-specific persona ablation (`specificity --brief … --image …`)
-- 189 offline tests (`pytest tests/`) run the full pipeline on fixtures with zero network
+- 225 offline tests (`pytest tests/`) run the full pipeline on fixtures with zero network
 
 ## Research grounding
 
