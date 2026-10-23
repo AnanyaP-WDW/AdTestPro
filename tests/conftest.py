@@ -12,6 +12,7 @@ os.environ.setdefault("ADTESTPRO_DISABLE_KEYRING", "1")
 
 import pytest
 
+from app.core import active as active_mod
 from app.core import prefs as prefs_mod
 from app.core import runs as runs_mod
 from app.core import settings as settings_mod
@@ -21,9 +22,12 @@ from app.core import settings as settings_mod
 def _isolate_local_state(tmp_path, monkeypatch):
     # A token exported in the developer shell must not 401 the offline suite.
     monkeypatch.delenv("ADTESTPRO_AUTH_TOKEN", raising=False)
+    # No run may leak its "active" slot into the next test.
+    active_mod.ACTIVE.reset()
     monkeypatch.setattr(runs_mod, "default_path", lambda: tmp_path / "test.db")
     monkeypatch.setattr(runs_mod, "_legacy_path", lambda: tmp_path / "no-legacy.db")
     monkeypatch.setattr(prefs_mod, "default_path", lambda: tmp_path / "preferences.json")
     monkeypatch.setattr(settings_mod, "default_path", lambda: tmp_path / "settings.local.json")
     monkeypatch.setattr(settings_mod, "_legacy_path", lambda: tmp_path / "no-legacy.json")
     yield
+    active_mod.ACTIVE.reset()
